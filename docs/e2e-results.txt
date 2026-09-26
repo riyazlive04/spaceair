@@ -1,0 +1,29 @@
+PASS  5% discount quotation goes to pending approval
+PASS  …routed to the branch head, not the Founder
+PASS  Branch head approval marks quotation approved
+PASS  Quotation emailed to client
+PASS  Two follow-up tasks scheduled
+PASS  Deal moved to Quotation sent
+PASS  Won deal created a project
+PASS  Advance-invoice task for Accounts
+PASS  New ticket auto-assigned to a technician
+PASS  No AMC → marked chargeable
+PASS  Feedback WhatsApp sent on resolution
+PASS  Enquiry converted to opportunity
+PASS  GET /dashboard → 200
+PASS  GET /enquiries → 200
+PASS  GET /pipeline → 200
+PASS  GET /clients → 200
+PASS  GET /quotations → 200
+PASS  GET /approvals → 200
+PASS  GET /projects → 200
+PASS  GET /amc → 200
+PASS  GET /service → 200
+PASS  GET /tasks → 200
+PASS  GET /reports → 200
+PASS  GET /automations → 200
+PASS  GET /automations/messages → 200
+PASS  GET /settings → 200
+PASS  GET /notifications → 200
+
+All checks passed

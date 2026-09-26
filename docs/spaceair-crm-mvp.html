@@ -1,0 +1,894 @@
+<title>Spaceair CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#EEF2F1; --surface:#FFFFFF; --surface-2:#E6ECEB; --ink:#13222B; --ink-2:#44555E; --muted:#6F8089;
+  --line:#D3DCDB; --accent:#0A6F8C; --accent-ink:#FFFFFF; --accent-soft:#DCEDF2;
+  --good:#2C7A4B; --good-soft:#DDF0E4; --warn:#9A6412; --warn-soft:#F8ECD4; --crit:#B83227; --crit-soft:#F8E0DD;
+  --hvac:#2B6FAE; --fire:#C0432E; --elec:#B08416; --plumb:#23877B; --mep:#6A55A8;
+  --shadow:0 10px 30px rgba(19,34,43,.14);
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0D161B; --surface:#14212A; --surface-2:#1B2B34; --ink:#E4EDF0; --ink-2:#A8B7BD; --muted:#7E9098;
+    --line:#26384166; --accent:#4DB0CC; --accent-ink:#06222B; --accent-soft:#12394566;
+    --good:#5CC08A; --good-soft:#173A2766; --warn:#E3AA4A; --warn-soft:#44321266; --crit:#F07A6E; --crit-soft:#4A1F1B66;
+    --hvac:#6AA8E0; --fire:#EE7A64; --elec:#DDB64A; --plumb:#55C2B3; --mep:#A391E0;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0D161B; --surface:#14212A; --surface-2:#1B2B34; --ink:#E4EDF0; --ink-2:#A8B7BD; --muted:#7E9098;
+  --line:#26384166; --accent:#4DB0CC; --accent-ink:#06222B; --accent-soft:#12394566;
+  --good:#5CC08A; --good-soft:#173A2766; --warn:#E3AA4A; --warn-soft:#44321266; --crit:#F07A6E; --crit-soft:#4A1F1B66;
+  --hvac:#6AA8E0; --fire:#EE7A64; --elec:#DDB64A; --plumb:#55C2B3; --mep:#A391E0;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font:14px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:228px minmax(0,1fr);min-height:100%}
+/* sidebar */
+.side{background:var(--surface);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow:auto}
+.brand{display:flex;flex-direction:column;gap:2px;padding:0 8px}
+.brand b{font:800 20px/1.1 var(--f-display);font-stretch:85%;letter-spacing:.02em}
+.brand b span{color:var(--accent)}
+.brand small{color:var(--muted);font-size:12px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .grp{font:600 11px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 10px 6px}
+.nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:6px;color:var(--ink-2);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--surface-2);color:var(--ink)}
+.nav a[aria-current="page"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.nav .cnt{font:500 11px/1 var(--f-mono);color:var(--muted);background:var(--surface-2);padding:3px 6px;border-radius:10px}
+.nav .cnt.alert{background:var(--crit-soft);color:var(--crit)}
+.side .foot{margin-top:auto;font-size:12px;color:var(--muted);padding:0 8px;display:flex;flex-direction:column;gap:6px}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-align:left;font-size:12px}
+/* main */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.top h1{font:700 22px/1.2 var(--f-display);font-stretch:88%;margin:0;text-wrap:balance;flex:1 1 auto}
+.demo{font:500 11px/1 var(--f-mono);letter-spacing:.04em;color:var(--warn);background:var(--warn-soft);padding:5px 8px;border-radius:4px;white-space:nowrap}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input[type=text],input[type=number],input[type=search],textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+select{padding-right:6px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.view{padding:22px 24px 48px;display:flex;flex-direction:column;gap:20px;min-width:0}
+.view[hidden]{display:none}
+h2{font:700 16px/1.3 var(--f-display);font-stretch:92%;margin:0;letter-spacing:.01em}
+h3{font:600 13px/1.3 var(--f-body);margin:0;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+.sub{color:var(--muted);font-size:13px;margin:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi .l{font-size:12px;color:var(--muted);letter-spacing:.02em}
+.kpi .v{font:700 26px/1.1 var(--f-display);font-stretch:85%;font-variant-numeric:tabular-nums}
+.kpi .n{font-size:12px;color:var(--ink-2)}
+.kpi .n.bad{color:var(--crit)}
+/* bars */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:110px minmax(0,1fr) 88px;align-items:center;gap:10px;font-size:13px}
+.bar-row .lab{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:14px;background:var(--surface-2);border-radius:3px;position:relative}
+.bar-fill{height:100%;background:var(--accent);border-radius:0 4px 4px 0;min-width:2px}
+.bar-row .val{font:500 12.5px/1 var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.bar-row .val small{color:var(--muted)}
+.bar-row:hover .bar-fill{filter:brightness(1.12)}
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font:600 11px/1.2 var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--surface-2)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mono{font-family:var(--f-mono);font-size:12px}
+.muted{color:var(--muted)}
+.strong{font-weight:600}
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:10px;white-space:nowrap;background:var(--surface-2);color:var(--ink-2)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.div{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap}
+.div::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c,var(--muted))}
+/* attention list */
+.att{display:flex;flex-direction:column}
+.att-i{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.att-i:first-child{border-top:0;padding-top:0}
+.att-i .t{font-weight:500}
+.att-i .d{font-size:12.5px;color:var(--muted)}
+/* kanban */
+.kan{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(232px,1fr);gap:12px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--surface-2);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:240px}
+.col.over{outline:2px dashed var(--accent);outline-offset:-2px}
+.col-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:2px 4px 4px}
+.col-h b{font:700 13px/1.2 var(--f-display);font-stretch:90%;letter-spacing:.02em;text-transform:uppercase}
+.col-h span{font:500 12px/1 var(--f-mono);color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;cursor:grab;text-align:left}
+.card:hover{border-color:var(--accent)}
+.card.dragging{opacity:.5}
+.card .acc{font-weight:600;font-size:13px}
+.card .ttl{font-size:12.5px;color:var(--ink-2);line-height:1.35}
+.card .meta{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+.card .amt{font:500 13px/1 var(--f-mono)}
+.card .nx{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}
+.card .nx.late{color:var(--crit)}
+/* drawer & modal */
+.scrim{position:fixed;inset:0;background:rgba(8,16,20,.42);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--surface);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.drawer-h h2{font-size:19px}
+.drawer-b{padding:18px 20px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.x{background:none;border:0;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+.kv{display:grid;grid-template-columns:130px minmax(0,1fr);gap:8px 12px;font-size:13px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.tl li{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;font-size:13px}
+.tl time{font:500 11.5px/1.6 var(--f-mono);color:var(--muted)}
+.modal{position:fixed;z-index:21;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 32px));max-height:calc(100% - 40px);overflow:auto;background:var(--surface);border-radius:10px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:14px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-2);font-weight:500}
+.form .full{grid-column:1/-1}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.end{justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:6px;z-index:30;font-weight:500;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+/* filters */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 11px;cursor:pointer;font-size:13px;color:var(--ink-2);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+/* quotes */
+.qgrid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+.qlist{display:flex;flex-direction:column;gap:6px}
+.qitem{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:3px;text-align:left}
+.qitem[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.qitem .r1{display:flex;justify-content:space-between;gap:8px}
+.boq input{width:84px;text-align:right;padding:4px 6px}
+.tot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 24px;justify-content:end;font-size:13px;margin-left:auto;min-width:260px}
+.tot .g{font:700 18px/1.2 var(--f-display);font-stretch:88%}
+.revs{display:flex;gap:6px;flex-wrap:wrap}
+/* plan */
+.plan{max-width:1040px;display:flex;flex-direction:column;gap:22px}
+.plan p,.plan li{max-width:72ch}
+.plan ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;display:flex;flex-direction:column;gap:10px}
+.hero .eyebrow{font:600 11px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.hero h2{font-size:28px;font-stretch:82%;line-height:1.1;text-wrap:balance}
+.hero p{margin:0;color:var(--ink-2)}
+.facts{display:flex;gap:8px 20px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.facts b{color:var(--ink);font-variant-numeric:tabular-nums}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.flow .st{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.flow .st b{font-size:13px}
+.flow .st small{color:var(--muted)}
+.flow .st.sales{border-top:3px solid var(--accent)}
+.flow .st.ops{border-top:3px solid var(--plumb)}
+.flow .st.svc{border-top:3px solid var(--elec)}
+.flow .arr{color:var(--muted);font-family:var(--f-mono)}
+.cards3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.pcard .when{font:500 12px/1 var(--f-mono);color:var(--muted)}
+.pcard h2{font-size:17px}
+.pcard ul{font-size:13px}
+.pcard.now{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.qs{counter-reset:q;list-style:none;padding:0!important}
+.qs li{counter-increment:q;display:grid;grid-template-columns:28px minmax(0,1fr);gap:6px}
+.qs li::before{content:counter(q);font:500 12px/1.6 var(--f-mono);color:var(--accent)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+@media (max-width:1000px){
+  .grid3,.grid2,.qgrid{grid-template-columns:minmax(0,1fr)}
+  .cards3{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;height:auto;flex-direction:column;gap:10px;padding:12px 16px;border-right:0;border-bottom:1px solid var(--line)}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px}
+  .nav .grp,.side .foot{display:none}
+  .nav a{white-space:nowrap}
+  .top{padding:12px 16px;position:static}
+  .view{padding:16px 16px 40px}
+  .form{grid-template-columns:minmax(0,1fr)}
+  .bar-row{grid-template-columns:84px minmax(0,1fr) 78px}
+  .kv{grid-template-columns:110px minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){
+  .drawer{animation:slide .18s ease-out}
+  @keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}
+}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><b>SPACE<span>AIR</span> CRM</b><small>MEP sales, AMC &amp; service</small></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">
+      <span>Prototype by Sirah Digital · sample data only</span>
+      <button class="linkbtn" id="resetBtn" type="button">Reset demo data</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <h1 id="pageTitle">Dashboard</h1>
+      <span class="demo">DEMO · SAMPLE DATA</span>
+      <div class="ctrl">
+        <label class="sub" for="branchSel">Branch</label>
+        <select id="branchSel"></select>
+        <button class="btn pri" id="newEnqBtn" type="button">+ New enquiry</button>
+      </div>
+    </header>
+    <section class="view" id="v-dashboard"></section>
+    <section class="view" id="v-enquiries" hidden></section>
+    <section class="view" id="v-pipeline" hidden></section>
+    <section class="view" id="v-accounts" hidden></section>
+    <section class="view" id="v-quotes" hidden></section>
+    <section class="view" id="v-amc" hidden></section>
+    <section class="view" id="v-service" hidden></section>
+    <section class="view" id="v-plan" hidden></section>
+  </main>
+</div>
+<div id="overlay"></div>
+
+<script>
+(function(){
+"use strict";
+const NOW = new Date('2026-09-26T11:00:00+05:30');
+const DAY = 864e5, HR = 36e5;
+const dAgo = n => new Date(NOW.getTime() + n*DAY).toISOString();
+const hAgo = n => new Date(NOW.getTime() - n*HR).toISOString();
+const BRANCHES = ['Chennai','Bangalore','Hyderabad','Renigunta','Colombo'];
+const DIVS = {HVAC:'--hvac', Fire:'--fire', Electrical:'--elec', Plumbing:'--plumb', 'Turnkey MEP':'--mep'};
+const STAGES = [
+  {k:'Qualified',label:'Qualified',p:15},
+  {k:'Survey',label:'Site survey',p:25},
+  {k:'BOQ',label:'BOQ & design',p:40},
+  {k:'Quotation',label:'Quotation sent',p:50},
+  {k:'Negotiation',label:'Negotiation',p:70},
+  {k:'Won',label:'PO received',p:100},
+  {k:'Lost',label:'Lost',p:0}
+];
+const stageLabel = k => (STAGES.find(s=>s.k===k)||{}).label || k;
+
+function seed(){
+  return {
+  accounts:[
+    {id:'A01',name:'Amazon Development Centre',ind:'IT campus',city:'Chennai',branch:'Chennai',tier:'Key'},
+    {id:'A02',name:'Reliance Retail',ind:'Retail chain',city:'Bangalore',branch:'Bangalore',tier:'Key'},
+    {id:'A03',name:'Zoho Corporation',ind:'IT campus',city:'Renigunta',branch:'Renigunta',tier:'Key'},
+    {id:'A04',name:'Cognizant',ind:'IT services',city:'Chennai',branch:'Chennai',tier:'Key'},
+    {id:'A05',name:'KIA India',ind:'Automotive plant',city:'Anantapur',branch:'Renigunta',tier:'Key'},
+    {id:'A06',name:'Pfizer',ind:'Pharma',city:'Chennai',branch:'Chennai',tier:'Growth'},
+    {id:'A07',name:'ThoughtWorks',ind:'IT services',city:'Hyderabad',branch:'Hyderabad',tier:'Growth'},
+    {id:'A08',name:'RMZ Corp',ind:'Commercial real estate',city:'Bangalore',branch:'Bangalore',tier:'Key'},
+    {id:'A09',name:'Uber',ind:'Office / co-working',city:'Hyderabad',branch:'Hyderabad',tier:'Growth'},
+    {id:'A10',name:'Wistron',ind:'Electronics manufacturing',city:'Kolar',branch:'Bangalore',tier:'Growth'},
+    {id:'A11',name:'Viasat',ind:'R&D centre',city:'Chennai',branch:'Chennai',tier:'Growth'},
+    {id:'A12',name:'Shriram Properties',ind:'Residential developer',city:'Chennai',branch:'Chennai',tier:'Growth'},
+    {id:'A13',name:'Harbour Tech Park (sample)',ind:'Commercial real estate',city:'Colombo',branch:'Colombo',tier:'New'},
+    {id:'A14',name:'Olympia Tech Park',ind:'Commercial real estate',city:'Chennai',branch:'Chennai',tier:'Growth'}
+  ],
+  contacts:{
+    A01:[['S. Venkatesh','Facility Manager'],['Meera Iyer','Procurement Lead'],['R. Balaji','MEP Consultant (PMC)']],
+    A02:[['Anand Kulkarni','Projects Head – South'],['Kavya Rao','Procurement']],
+    A03:[['P. Sridhar','Admin & Facilities'],['Lakshmi N','Finance']],
+    A04:[['Joseph Mathew','Data Centre Ops'],['Hari Prasad','Facility Manager']],
+    A05:[['Kim Joon-ho','Plant Engineering'],['G. Reddy','Purchase']],
+    A06:[['Dr. Nisha Menon','QA / Validation'],['Arun Kumar','Engineering']],
+    A07:[['Sneha Rao','Workplace Lead']],
+    A08:[['Vikram Shetty','Project Director'],['Asha Pai','Contracts']],
+    A09:[['Rahul Varma','Workplace Ops']],
+    A10:[['Chen Wei','Facilities'],['Manjunath B','Purchase']],
+    A11:[['Karthik Subramanian','Site Admin']],
+    A12:[['V. Ramesh','Project Manager']],
+    A13:[['Nimal Perera','Chief Engineer']],
+    A14:[['S. Ganesh','Estate Manager']]
+  },
+  opps:[
+    {id:'O-1041',acc:'A01',title:'VRF retrofit – Tower B (220 TR)',div:'HVAC',branch:'Chennai',stage:'Negotiation',val:358,owner:'Karthik R',next:'Send revised commercials after L1 comparison',due:dAgo(1),src:'Existing client'},
+    {id:'O-1042',acc:'A02',title:'Fire fighting – 6 Smart stores',div:'Fire',branch:'Bangalore',stage:'Quotation',val:96,owner:'Priya S',next:'Follow up with procurement on R1',due:dAgo(-2),src:'Existing client'},
+    {id:'O-1043',acc:'A03',title:'New office block – HVAC, electrical & plumbing',div:'Turnkey MEP',branch:'Renigunta',stage:'BOQ',val:1240,owner:'Ravi Teja',next:'Submit BOQ to PMC',due:dAgo(4),src:'Architect / PMC'},
+    {id:'O-1044',acc:'A04',title:'Data centre precision cooling upgrade',div:'HVAC',branch:'Chennai',stage:'Survey',val:210,owner:'Karthik R',next:'Site survey with DC ops team',due:dAgo(2),src:'Existing client'},
+    {id:'O-1045',acc:'A05',title:'Paint shop ventilation & exhaust',div:'HVAC',branch:'Renigunta',stage:'Won',val:560,owner:'Ravi Teja',next:'Kick-off & handover to Projects',due:dAgo(3),src:'Tender'},
+    {id:'O-1046',acc:'A06',title:'Clean room HVAC – ISO 8 suite',div:'HVAC',branch:'Chennai',stage:'Quotation',val:318,owner:'Deepa N',next:'Answer technical clarifications',due:dAgo(-1),src:'Referral'},
+    {id:'O-1047',acc:'A07',title:'Office fit-out – electrical',div:'Electrical',branch:'Hyderabad',stage:'Negotiation',val:74,owner:'Arjun M',next:'Final price call',due:dAgo(0),src:'Website'},
+    {id:'O-1048',acc:'A08',title:'Sprinkler & hydrant – Tower 3',div:'Fire',branch:'Bangalore',stage:'BOQ',val:188,owner:'Priya S',next:'Hydraulic calculation sign-off',due:dAgo(6),src:'Existing client'},
+    {id:'O-1049',acc:'A09',title:'Co-working floor – HVAC + plumbing',div:'Turnkey MEP',branch:'Hyderabad',stage:'Qualified',val:65,owner:'Arjun M',next:'Schedule site survey',due:dAgo(1),src:'Website'},
+    {id:'O-1050',acc:'A10',title:'Process cooling – SMT line',div:'HVAC',branch:'Bangalore',stage:'Survey',val:142,owner:'Priya S',next:'Heat load study',due:dAgo(5),src:'LG dealer lead'},
+    {id:'O-1051',acc:'A11',title:'STP 60 KLD & RO plant',div:'Plumbing',branch:'Chennai',stage:'Qualified',val:38,owner:'Deepa N',next:'Confirm capacity (KLD) with client',due:dAgo(-3),src:'Phone'},
+    {id:'O-1052',acc:'A12',title:'Residential tower plumbing & RWH',div:'Plumbing',branch:'Chennai',stage:'Lost',val:92,owner:'Deepa N',next:'Lost – price, L2 by 6%',due:dAgo(-20),src:'Tender'},
+    {id:'O-1053',acc:'A13',title:'Chiller plant 2 × 350 TR',div:'HVAC',branch:'Colombo',stage:'Quotation',val:610,owner:'Nuwan P',next:'Share LKR quotation',due:dAgo(3),src:'Email'},
+    {id:'O-1054',acc:'A14',title:'VRF retrofit + AMC conversion',div:'HVAC',branch:'Chennai',stage:'Won',val:48,owner:'Karthik R',next:'Raise AMC contract',due:dAgo(2),src:'AMC upsell'},
+    {id:'O-1055',acc:'A01',title:'Fire alarm upgrade – Hyderabad site',div:'Fire',branch:'Hyderabad',stage:'Qualified',val:56,owner:'Arjun M',next:'Get existing panel details',due:dAgo(2),src:'Existing client'},
+    {id:'O-1056',acc:'A02',title:'HVAC for 4 new Trends stores',div:'HVAC',branch:'Bangalore',stage:'Won',val:132,owner:'Priya S',next:'Material indent raised',due:dAgo(1),src:'Existing client'}
+  ],
+  enqs:[
+    {id:'E-2308',at:hAgo(1.5),src:'WhatsApp',co:'Nexa Data Centres (sample)',person:'Arvind',req:'UPS room cooling, ~40 TR, urgent',div:'HVAC',branch:'Chennai',status:'New'},
+    {id:'E-2301',at:hAgo(4),src:'Website form',co:'Sri Kaveri Hospitals (sample)',person:'Dr. Suresh',req:'AMC quote for 40 splits + 2 VRF systems',div:'HVAC',branch:'Chennai',status:'New'},
+    {id:'E-2302',at:hAgo(26),src:'Phone',co:'Lotus Warehousing (sample)',person:'Mahesh',req:'Sprinkler system for fire NOC compliance',div:'Fire',branch:'Bangalore',status:'Contacted'},
+    {id:'E-2303',at:hAgo(48),src:'LG dealer lead',co:'Metro Mall Hyderabad (sample)',person:'Farhan',req:'VRF 180 HP for mall expansion',div:'HVAC',branch:'Hyderabad',status:'New'},
+    {id:'E-2307',at:hAgo(50),src:'Email',co:'Galle Face Hotel (sample)',person:'Ruwan',req:'Chiller AMC – 3 × 250 TR',div:'HVAC',branch:'Colombo',status:'Contacted'},
+    {id:'E-2304',at:hAgo(72),src:'Tender portal',co:'State hostel project (sample)',person:'—',req:'Internal electrification, tender due 10 Oct',div:'Electrical',branch:'Renigunta',status:'Under review'},
+    {id:'E-2305',at:hAgo(96),src:'Architect / PMC',co:'Greenfield IT park (sample)',person:'Ar. Nandini',req:'4 lakh sq ft – full MEP package',div:'Turnkey MEP',branch:'Chennai',status:'Contacted'},
+    {id:'E-2306',at:hAgo(120),src:'Website form',co:'Brew & Bake Cafés (sample)',person:'Kiran',req:'Kitchen exhaust & fresh air – 5 outlets',div:'HVAC',branch:'Bangalore',status:'New'}
+  ],
+  amcs:[
+    {id:'AMC-301',acc:'A01',site:'Tower A, Chennai',scope:'VRF 320 HP (LG Multi V) – comprehensive',val:18.4,end:dAgo(42),visits:[3,4],status:'Active'},
+    {id:'AMC-302',acc:'A04',site:'Siruseri campus',scope:'Chillers 2 × 400 TR + 18 AHUs – non-comprehensive',val:26.0,end:dAgo(210),visits:[2,4],status:'Active'},
+    {id:'AMC-303',acc:'A02',site:'38 stores, Karnataka',scope:'Splits & cassettes – comprehensive',val:12.6,end:dAgo(18),visits:[4,4],status:'Active'},
+    {id:'AMC-304',acc:'A03',site:'Renigunta campus',scope:'Fire hydrant, sprinkler & pumps',val:6.8,end:dAgo(300),visits:[1,4],status:'Active'},
+    {id:'AMC-305',acc:'A08',site:'Tower 1, Bangalore',scope:'HVAC + fire fighting – non-comprehensive',val:22.5,end:dAgo(-5),visits:[4,4],status:'Active'},
+    {id:'AMC-306',acc:'A06',site:'Chennai plant',scope:'Clean room AHUs & HEPA validation',val:9.2,end:dAgo(95),visits:[2,4],status:'Active'},
+    {id:'AMC-307',acc:'A14',site:'Olympia Tech Park',scope:'VRF 180 HP – comprehensive',val:8.8,end:dAgo(365),visits:[0,4],status:'Active'},
+    {id:'AMC-308',acc:'A13',site:'Colombo',scope:'Chiller plant & cooling towers',val:14.0,end:dAgo(150),visits:[2,4],status:'Active'}
+  ],
+  tickets:[
+    {id:'T-5501',acc:'A01',site:'Tower A, Chennai',issue:'ODU error E-21 – floors 4–6 not cooling',pri:'P1',sla:4,at:hAgo(3),status:'In progress',tech:'Manoj K',amc:'AMC-301'},
+    {id:'T-5502',acc:'A04',site:'Siruseri campus',issue:'Chiller 2 tripping on high head pressure',pri:'P1',sla:4,at:hAgo(6),status:'Assigned',tech:'Suresh V',amc:'AMC-302'},
+    {id:'T-5503',acc:'A02',site:'Store #212, Koramangala',issue:'Cassette unit water leakage',pri:'P2',sla:24,at:hAgo(10),status:'Open',tech:'',amc:'AMC-303'},
+    {id:'T-5504',acc:'A06',site:'Chennai plant',issue:'AHU-3 filter DP high – change pre-filters',pri:'P2',sla:24,at:hAgo(20),status:'In progress',tech:'Suresh V',amc:'AMC-306'},
+    {id:'T-5505',acc:'A03',site:'Renigunta campus',issue:'Jockey pump auto-start not working',pri:'P2',sla:24,at:hAgo(2),status:'Assigned',tech:'Venkat R',amc:'AMC-304'},
+    {id:'T-5506',acc:'A14',site:'Olympia Tech Park',issue:'Quarterly PPM visit – Q3',pri:'P3',sla:72,at:hAgo(30),status:'Scheduled',tech:'Manoj K',amc:'AMC-307'},
+    {id:'T-5507',acc:'A08',site:'Tower 1, Bangalore',issue:'Fire alarm panel fault (AMC lapsed – chargeable)',pri:'P2',sla:24,at:hAgo(26),status:'Open',tech:'',amc:'AMC-305'},
+    {id:'T-5508',acc:'A13',site:'Colombo',issue:'Condenser water pump noise',pri:'P3',sla:72,at:hAgo(12),status:'Resolved',tech:'Dinesh S',amc:'AMC-308'}
+  ],
+  quotes:[
+    {id:'Q-26-0187',opp:'O-1041',rev:'R2',status:'Sent',date:dAgo(-6),valid:30,revs:[['R0',392,dAgo(-34)],['R1',371,dAgo(-19)],['R2',null,dAgo(-6)]],disc:0,boq:[
+      ['VRF outdoor unit, LG Multi V i, 24 HP','Nos',9,1640000],
+      ['Ducted indoor unit, 3 TR, ceiling concealed','Nos',48,118000],
+      ['4-way cassette indoor unit, 2 TR','Nos',36,82000],
+      ['Copper refrigerant piping with nitrile insulation','Rmt',3800,1450],
+      ['GI ducting 24/22 G with insulation','Sqm',4200,980],
+      ['Supply & return grilles / diffusers','Nos',620,2150],
+      ['Central controller & BMS integration','Lot',1,680000],
+      ['Dismantling & disposal of existing units','Lot',1,420000],
+      ['Testing, commissioning & air balancing','Lot',1,350000]
+    ]},
+    {id:'Q-26-0191',opp:'O-1046',rev:'R0',status:'Sent',date:dAgo(-9),valid:30,revs:[['R0',null,dAgo(-9)]],disc:0,boq:[
+      ['AHU, double-skin, 12,000 CFM with HEPA terminal','Nos',4,2650000],
+      ['Air-cooled scroll chiller, 120 TR','Nos',2,4800000],
+      ['Pre-insulated chilled water piping','Rmt',640,6200],
+      ['Clean room ducting, SS 304 at critical zones','Sqm',1600,2900],
+      ['HEPA filter boxes with DOP port','Nos',86,38500],
+      ['Validation – DQ, IQ, OQ, particle count','Lot',1,850000]
+    ]},
+    {id:'Q-26-0193',opp:'O-1042',rev:'R1',status:'Sent',date:dAgo(-4),valid:30,revs:[['R0',104,dAgo(-15)],['R1',null,dAgo(-4)]],disc:0,boq:[
+      ['Sprinkler heads, pendent, 68°C','Nos',1450,720],
+      ['MS C-class piping, 25–150 mm, painted','Rmt',5200,980],
+      ['Fire pump set – main, jockey & diesel','Set',6,640000],
+      ['Hydrant valves, hose reels & cabinets','Nos',48,42000],
+      ['Addressable fire alarm panel & devices','Lot',6,360000],
+      ['Testing & fire NOC liaison','Lot',6,120000]
+    ]},
+    {id:'Q-26-0195',opp:'O-1053',rev:'R0',status:'Draft',date:dAgo(0),valid:45,revs:[['R0',null,dAgo(0)]],disc:0,boq:[
+      ['Water-cooled screw chiller, 350 TR','Nos',2,14800000],
+      ['Cooling tower, 450 TR, FRP','Nos',2,3200000],
+      ['Primary & secondary pumps with VFD','Nos',6,720000],
+      ['Chilled & condenser water piping, insulated','Rmt',2400,7800],
+      ['Plant room BMS & electricals','Lot',1,4600000]
+    ]},
+    {id:'Q-26-0180',opp:'O-1047',rev:'R3',status:'Negotiation',date:dAgo(-3),valid:30,revs:[['R0',82,dAgo(-40)],['R1',79,dAgo(-28)],['R2',76,dAgo(-12)],['R3',null,dAgo(-3)]],disc:2,boq:[
+      ['LT panel with ACBs','Nos',2,1150000],
+      ['Distribution boards & MCBs','Nos',34,48000],
+      ['Wiring – points (light, power, data)','Pts',2600,1350],
+      ['Cable tray & raceways','Rmt',1800,820],
+      ['LED fixtures supply & fix','Nos',980,1650],
+      ['Earthing & lightning protection','Lot',1,380000]
+    ]}
+  ],
+  log:{}
+  };
+}
+
+/* ---------- state ---------- */
+const KEY='spaceair-crm-demo-v1';
+let S;
+try{ const raw=localStorage.getItem(KEY); S = raw ? JSON.parse(raw) : seed(); }catch(e){ S = seed(); }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+let branch='All';
+try{ branch = localStorage.getItem(KEY+':branch') || 'All'; }catch(e){}
+const ui={ enqFilter:'Open', amcFilter:'All', tkFilter:'Open', quote:'Q-26-0187', acctQ:'' };
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const acc = id => S.accounts.find(a=>a.id===id) || {name:'—'};
+const inBranch = b => branch==='All' || b===branch;
+function fmtL(l){ // lakhs → display
+  if(l>=100) return '₹'+(l/100).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:2})+' Cr';
+  return '₹'+l.toLocaleString('en-IN',{maximumFractionDigits:1})+' L';
+}
+const inr = n => '₹'+Math.round(n).toLocaleString('en-IN');
+const fDate = iso => new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+const daysFrom = iso => Math.round((new Date(iso)-NOW)/DAY);
+function ago(iso){ const h=(NOW-new Date(iso))/HR; if(h<1) return Math.max(1,Math.round(h*60))+' min ago'; if(h<24) return Math.round(h)+' h ago'; return Math.round(h/24)+' d ago'; }
+const divChip = d => `<span class="div" style="--c:var(${DIVS[d]||'--muted'})">${esc(d)}</span>`;
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.setAttribute('role','status'); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+function logFor(id){ return S.log[id] || (S.log[id]=[]); }
+function addLog(id,txt){ logFor(id).unshift({at:new Date().toISOString(),txt}); save(); }
+function quoteTotal(q){ const b=q.boq.reduce((s,r)=>s+r[2]*r[3],0); return b*(1-(q.disc||0)/100); }
+function tkSla(t){ const due=new Date(t.at).getTime()+t.sla*HR; return (due-NOW.getTime())/HR; }
+function amcState(a){
+  const d=daysFrom(a.end);
+  if(a.status==='Renewed') return {k:'good',t:'Renewed'};
+  if(d<0) return {k:'crit',t:'Lapsed '+(-d)+' d'};
+  if(a.status==='Renewal quote sent') return {k:'info',t:'Renewal quote sent'};
+  if(d<=60) return {k:'warn',t:'Renew in '+d+' d'};
+  return {k:'good',t:'Active'};
+}
+function tkState(t){
+  if(t.status==='Resolved') return {k:'good',t:'Resolved'};
+  const h=tkSla(t);
+  if(h<0) return {k:'crit',t:'SLA breached '+Math.round(-h)+' h'};
+  if(h<t.sla*0.3) return {k:'warn',t:Math.max(1,Math.round(h))+' h left'};
+  return {k:'',t:Math.round(h)+' h left'};
+}
+
+/* ---------- nav ---------- */
+const VIEWS=[
+  ['dashboard','Dashboard','Overview'],
+  ['enquiries','Enquiries','Sales'],['pipeline','Pipeline','Sales'],['accounts','Clients','Sales'],['quotes','Quotations','Sales'],
+  ['amc','AMC contracts','Service'],['service','Service tickets','Service'],
+  ['plan','Project plan','About this MVP']
+];
+let current='dashboard';
+function counts(){
+  const enq=S.enqs.filter(e=>inBranch(e.branch)&&e.status==='New').length;
+  const br=S.tickets.filter(t=>inBranch(acc(t.acc).branch)&&t.status!=='Resolved'&&tkSla(t)<0).length;
+  const amc=S.amcs.filter(a=>inBranch(acc(a.acc).branch)&&['warn','crit'].includes(amcState(a).k)).length;
+  return {enquiries:[enq,false],service:[br,true],amc:[amc,true]};
+}
+function renderNav(){
+  const c=counts(); let g=''; let h='';
+  VIEWS.forEach(([k,label,grp])=>{
+    if(grp!==g){ h+=`<div class="grp">${grp}</div>`; g=grp; }
+    const n=c[k]; const badge = n&&n[0] ? `<span class="cnt${n[1]?' alert':''}" title="Needs attention">${n[0]}</span>` : '';
+    h+=`<a href="#${k}" data-v="${k}"${k===current?' aria-current="page"':''}>${label}${badge}</a>`;
+  });
+  $('#nav').innerHTML=h;
+}
+function go(v){
+  if(!VIEWS.some(x=>x[0]===v)) v='dashboard';
+  current=v;
+  VIEWS.forEach(([k])=>{ $('#v-'+k).hidden = k!==v; });
+  $('#pageTitle').textContent = VIEWS.find(x=>x[0]===v)[1];
+  render();
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',()=>go(location.hash.slice(1)));
+
+/* ---------- dashboard ---------- */
+function barRows(rows,max){
+  return `<div class="bars">${rows.map(r=>`<div class="bar-row" title="${esc(r.tip)}"><span class="lab">${esc(r.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${max?Math.max(0.5,r.v/max*100):0}%"></div></div><span class="val">${fmtL(r.v)} <small>· ${r.n}</small></span></div>`).join('')}</div>`;
+}
+function vDashboard(){
+  const opps=S.opps.filter(o=>inBranch(o.branch));
+  const open=opps.filter(o=>!['Won','Lost'].includes(o.stage));
+  const openV=open.reduce((s,o)=>s+o.val,0);
+  const wtd=open.reduce((s,o)=>s+o.val*(STAGES.find(x=>x.k===o.stage).p/100),0);
+  const won=opps.filter(o=>o.stage==='Won'), lost=opps.filter(o=>o.stage==='Lost');
+  const wonV=won.reduce((s,o)=>s+o.val,0);
+  const winRate = won.length+lost.length ? Math.round(won.length/(won.length+lost.length)*100) : 0;
+  const enqs=S.enqs.filter(e=>inBranch(e.branch)&&!['Converted','Disqualified'].includes(e.status));
+  const stale=enqs.filter(e=>e.status==='New'&&(NOW-new Date(e.at))/HR>24);
+  const amcs=S.amcs.filter(a=>inBranch(acc(a.acc).branch));
+  const due=amcs.filter(a=>['warn','crit'].includes(amcState(a).k));
+  const dueV=due.reduce((s,a)=>s+a.val,0);
+  const tks=S.tickets.filter(t=>inBranch(acc(t.acc).branch)&&t.status!=='Resolved');
+  const breached=tks.filter(t=>tkSla(t)<0);
+
+  const byStage=STAGES.filter(s=>!['Won','Lost'].includes(s.k)).map(s=>{const l=open.filter(o=>o.stage===s.k);return {label:s.label,v:l.reduce((a,o)=>a+o.val,0),n:l.length,tip:`${s.label}: ${l.length} opportunities`};});
+  const byBranch=BRANCHES.map(b=>{const l=open.filter(o=>o.branch===b);return {label:b,v:l.reduce((a,o)=>a+o.val,0),n:l.length,tip:`${b}: ${l.length} open opportunities`};}).filter(r=>branch==='All'||r.label===branch);
+  const byDiv=Object.keys(DIVS).map(d=>{const l=open.filter(o=>o.div===d);return {label:d,v:l.reduce((a,o)=>a+o.val,0),n:l.length,tip:`${d}: ${l.length} open`};}).filter(r=>r.n);
+  const mx=a=>Math.max(1,...a.map(r=>r.v));
+
+  // attention
+  const att=[];
+  breached.forEach(t=>att.push({k:'crit',tag:'SLA',t:`${t.id} · ${acc(t.acc).name}`,d:t.issue,go:'service'}));
+  due.filter(a=>amcState(a).k==='crit').forEach(a=>att.push({k:'crit',tag:'AMC',t:`${acc(a.acc).name} AMC lapsed`,d:`${a.scope} · ${fmtL(a.val)}/yr at risk`,go:'amc'}));
+  open.filter(o=>daysFrom(o.due)<0).forEach(o=>att.push({k:'warn',tag:'Follow-up',t:`${acc(o.acc).name}: ${o.next}`,d:`${o.owner} · overdue ${-daysFrom(o.due)} d · ${fmtL(o.val)}`,go:'pipeline'}));
+  due.filter(a=>amcState(a).k==='warn').forEach(a=>att.push({k:'warn',tag:'AMC',t:`${acc(a.acc).name} renewal in ${daysFrom(a.end)} d`,d:`${a.scope} · ${fmtL(a.val)}/yr`,go:'amc'}));
+  stale.forEach(e=>att.push({k:'warn',tag:'Enquiry',t:`${e.co} – no response for ${Math.round((NOW-new Date(e.at))/DAY)} d`,d:`${e.src} · ${e.req}`,go:'enquiries'}));
+
+  $('#v-dashboard').innerHTML=`
+  <div class="kpis">
+    <div class="kpi"><span class="l">Open pipeline</span><span class="v">${fmtL(openV)}</span><span class="n">${open.length} opportunities · weighted ${fmtL(Math.round(wtd))}</span></div>
+    <div class="kpi"><span class="l">Orders won (FY 26–27)</span><span class="v">${fmtL(wonV)}</span><span class="n">${won.length} POs · win rate ${winRate}%</span></div>
+    <div class="kpi"><span class="l">Open enquiries</span><span class="v">${enqs.length}</span><span class="n${stale.length?' bad':''}">${stale.length} untouched &gt; 24 h</span></div>
+    <div class="kpi"><span class="l">AMC renewals due ≤ 60 d</span><span class="v">${fmtL(dueV)}</span><span class="n${due.some(a=>amcState(a).k==='crit')?' bad':''}">${due.length} contracts${due.some(a=>amcState(a).k==='crit')?' · 1+ already lapsed':''}</span></div>
+    <div class="kpi"><span class="l">Open service tickets</span><span class="v">${tks.length}</span><span class="n${breached.length?' bad':''}">${breached.length} past SLA</span></div>
+  </div>
+  <div class="grid3">
+    <div class="panel">
+      <div class="panel-h"><h2>Open pipeline by stage</h2><span class="sub">value · count</span></div>
+      ${barRows(byStage,mx(byStage))}
+      <div class="panel-h" style="margin-top:8px"><h2>By branch</h2></div>
+      ${barRows(byBranch,mx(byBranch))}
+      <div class="panel-h" style="margin-top:8px"><h2>By division</h2></div>
+      ${barRows(byDiv,mx(byDiv))}
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Needs attention today</h2><span class="sub">${att.length} items</span></div>
+      <div class="att">${att.length?att.slice(0,9).map(a=>`<div class="att-i"><span class="pill ${a.k}">${a.tag}</span><div><div class="t">${esc(a.t)}</div><div class="d">${esc(a.d)}</div></div><a class="btn sm" href="#${a.go}">Open</a></div>`).join(''):'<p class="sub">Nothing overdue. </p>'}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- enquiries ---------- */
+function vEnquiries(){
+  const f=ui.enqFilter;
+  const list=S.enqs.filter(e=>inBranch(e.branch)).filter(e=>f==='All'||(f==='Open'?!['Converted','Disqualified'].includes(e.status):e.status===f));
+  const stCls={New:'info',Contacted:'',"Under review":'warn',Converted:'good',Disqualified:''};
+  $('#v-enquiries').innerHTML=`
+  <div class="panel-h"><p class="sub">Every enquiry, from website forms, calls, WhatsApp, email, tender portals and LG dealer leads, in one queue. Target: first response within 4 working hours.</p>
+    <div class="seg" role="group" aria-label="Filter enquiries">${['Open','New','Converted','All'].map(x=>`<button type="button" data-enqf="${x}" aria-pressed="${f===x}">${x}</button>`).join('')}</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>ID</th><th>Received</th><th>Source</th><th>Company / requirement</th><th>Division</th><th>Branch</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(e=>{
+      const hrs=(NOW-new Date(e.at))/HR, late=e.status==='New'&&hrs>24;
+      return `<tr><td class="mono">${e.id}</td><td class="${late?'':'muted'}" style="white-space:nowrap${late?';color:var(--crit)':''}">${ago(e.at)}</td><td>${esc(e.src)}</td>
+      <td><div class="strong">${esc(e.co)}</div><div class="muted">${esc(e.person)} · ${esc(e.req)}</div></td><td>${divChip(e.div)}</td><td>${esc(e.branch)}</td>
+      <td><span class="pill ${stCls[e.status]||''}">${esc(e.status)}</span></td>
+      <td class="num">${['Converted','Disqualified'].includes(e.status)?'':`<div class="row end"><button class="btn sm" type="button" data-contact="${e.id}">Log call</button><button class="btn sm pri" type="button" data-convert="${e.id}">Convert</button></div>`}</td></tr>`;}).join('')||'<tr><td colspan="8" class="muted">No enquiries match this filter.</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+/* ---------- pipeline ---------- */
+function vPipeline(){
+  const opps=S.opps.filter(o=>inBranch(o.branch));
+  $('#v-pipeline').innerHTML=`
+  <div class="panel-h"><p class="sub">Drag a card to move it between stages, or open it to update. Stages follow the MEP sales cycle: survey → BOQ → quotation → negotiation → PO.</p>
+    <div class="legend">${Object.keys(DIVS).map(divChip).join('')}</div></div>
+  <div class="kan">${STAGES.map(s=>{
+    const l=opps.filter(o=>o.stage===s.k); const v=l.reduce((a,o)=>a+o.val,0);
+    return `<div class="col" data-stage="${s.k}"><div class="col-h"><b>${s.label}</b><span>${l.length} · ${fmtL(v)}</span></div>
+    ${l.map(o=>{const dd=daysFrom(o.due); const late=dd<0&&!['Won','Lost'].includes(o.stage);
+      return `<div class="card" draggable="true" tabindex="0" role="button" data-opp="${o.id}"><span class="acc">${esc(acc(o.acc).name)}</span><span class="ttl">${esc(o.title)}</span>
+      <div class="meta">${divChip(o.div)}<span class="amt">${fmtL(o.val)}</span></div>
+      <div class="nx${late?' late':''}">${esc(o.next)} · ${late?'overdue '+(-dd)+' d':dd===0?'today':fDate(o.due)}<br><span class="muted">${esc(o.owner)} · ${esc(o.branch)}</span></div></div>`;}).join('')}
+    </div>`;}).join('')}</div>`;
+}
+function moveOpp(id,stage){
+  const o=S.opps.find(x=>x.id===id); if(!o||o.stage===stage) return;
+  const from=o.stage; o.stage=stage; addLog(id,`Stage moved: ${stageLabel(from)} → ${stageLabel(stage)}`);
+  toast(stage==='Won'?`${acc(o.acc).name}: PO received, handed over to Projects`:`Moved to ${stageLabel(stage)}`);
+  render();
+  if(!$('#overlay').hidden && $('#overlay').innerHTML) openOpp(id);
+}
+
+/* ---------- opp drawer ---------- */
+function openDrawer(html){ $('#overlay').innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true">${html}</aside>`; $('#overlay').hidden=false; const x=$('#overlay .x'); if(x) x.focus(); }
+function closeOverlay(){ $('#overlay').innerHTML=''; $('#overlay').hidden=true; }
+function openOpp(id){
+  const o=S.opps.find(x=>x.id===id); const a=acc(o.acc);
+  const q=S.quotes.find(x=>x.opp===id);
+  const si=STAGES.findIndex(s=>s.k===o.stage);
+  const hist=[...logFor(id).map(l=>[fDate(l.at),l.txt]), ...(si>=2&&o.stage!=='Lost'?[['12 Sep','Site survey completed – drawings received from PMC']]:[]),['02 Sep','Enquiry qualified by '+o.owner],['28 Aug','Enquiry received via '+o.src]];
+  openDrawer(`<div class="drawer-h"><div><span class="mono muted">${o.id}</span><h2>${esc(a.name)}</h2><p class="sub">${esc(o.title)}</p></div><button class="x" type="button" data-close aria-label="Close">×</button></div>
+  <div class="drawer-b">
+    <dl class="kv">
+      <dt>Stage</dt><dd><select id="oppStage" data-oppstage="${o.id}">${STAGES.map(s=>`<option value="${s.k}"${s.k===o.stage?' selected':''}>${s.label}</option>`).join('')}</select></dd>
+      <dt>Value (basic)</dt><dd class="strong">${fmtL(o.val)} <span class="muted">excl. GST</span></dd>
+      <dt>Division</dt><dd>${divChip(o.div)}</dd>
+      <dt>Branch · owner</dt><dd>${esc(o.branch)} · ${esc(o.owner)}</dd>
+      <dt>Source</dt><dd>${esc(o.src)}</dd>
+      <dt>Next action</dt><dd>${esc(o.next)} · <span class="${daysFrom(o.due)<0?'':'muted'}" ${daysFrom(o.due)<0?'style="color:var(--crit)"':''}>${fDate(o.due)}</span></dd>
+      <dt>Quotation</dt><dd>${q?`<a href="#quotes" data-openq="${q.id}">${q.id} ${q.rev}</a> · ${esc(q.status)}`:'<span class="muted">Not started</span>'}</dd>
+    </dl>
+    <div class="panel"><h3>Key contacts</h3>${(S.contacts[o.acc]||[]).map(c=>`<div class="row" style="justify-content:space-between"><span>${esc(c[0])}</span><span class="muted">${esc(c[1])}</span></div>`).join('')}</div>
+    <div class="panel"><h3>Log activity</h3>
+      <textarea id="oppNote" rows="2" placeholder="e.g. Called Meera, revised BOQ expected Monday"></textarea>
+      <div class="row end"><button class="btn sm pri" type="button" data-addnote="${o.id}">Add to timeline</button></div>
+    </div>
+    <div><h3 style="margin-bottom:10px">Timeline</h3><ul class="tl">${hist.map(h=>`<li><time>${esc(h[0])}</time><span>${esc(h[1])}</span></li>`).join('')}</ul></div>
+  </div>`);
+}
+
+/* ---------- accounts ---------- */
+function vAccounts(){
+  const qq=ui.acctQ.toLowerCase();
+  const list=S.accounts.filter(a=>inBranch(a.branch)&&(!qq||(a.name+a.ind+a.city).toLowerCase().includes(qq)));
+  $('#v-accounts').innerHTML=`
+  <div class="panel-h"><p class="sub">One record per client: contacts, sites, opportunities, AMCs and tickets together.</p><input type="search" id="acctSearch" placeholder="Search clients" value="${esc(ui.acctQ)}" aria-label="Search clients"></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Client</th><th>Industry</th><th>Branch</th><th>Tier</th><th class="num">Open pipeline</th><th class="num">Won</th><th class="num">AMC / yr</th><th class="num">Open tickets</th></tr></thead>
+    <tbody>${list.map(a=>{
+      const op=S.opps.filter(o=>o.acc===a.id);
+      const pv=op.filter(o=>!['Won','Lost'].includes(o.stage)).reduce((s,o)=>s+o.val,0);
+      const wv=op.filter(o=>o.stage==='Won').reduce((s,o)=>s+o.val,0);
+      const av=S.amcs.filter(m=>m.acc===a.id).reduce((s,m)=>s+m.val,0);
+      const tk=S.tickets.filter(t=>t.acc===a.id&&t.status!=='Resolved').length;
+      return `<tr class="click" data-acct="${a.id}" tabindex="0"><td class="strong">${esc(a.name)}</td><td>${esc(a.ind)}</td><td>${esc(a.city)}${a.city!==a.branch?` <span class="muted">(${a.branch})</span>`:''}</td><td><span class="pill ${a.tier==='Key'?'info':''}">${a.tier}</span></td>
+      <td class="num">${pv?fmtL(pv):'—'}</td><td class="num">${wv?fmtL(wv):'—'}</td><td class="num">${av?fmtL(av):'—'}</td><td class="num">${tk||'—'}</td></tr>`;}).join('')||'<tr><td colspan="8" class="muted">No clients match.</td></tr>'}</tbody>
+  </table></div>`;
+}
+function openAcct(id){
+  const a=acc(id);
+  const op=S.opps.filter(o=>o.acc===id), am=S.amcs.filter(m=>m.acc===id), tk=S.tickets.filter(t=>t.acc===id);
+  openDrawer(`<div class="drawer-h"><div><span class="mono muted">${a.id} · ${esc(a.ind)}</span><h2>${esc(a.name)}</h2><p class="sub">${esc(a.city)} · served by ${esc(a.branch)} branch</p></div><button class="x" type="button" data-close aria-label="Close">×</button></div>
+  <div class="drawer-b">
+    <div class="panel"><h3>Contacts</h3>${(S.contacts[id]||[]).map(c=>`<div class="row" style="justify-content:space-between"><span class="strong">${esc(c[0])}</span><span class="muted">${esc(c[1])}</span></div>`).join('')}</div>
+    <div class="panel"><h3>Opportunities</h3>${op.map(o=>`<div class="row" style="justify-content:space-between"><a href="#pipeline" data-oppl="${o.id}">${esc(o.title)}</a><span class="row"><span class="pill">${stageLabel(o.stage)}</span><span class="mono">${fmtL(o.val)}</span></span></div>`).join('')||'<span class="muted">None</span>'}</div>
+    <div class="panel"><h3>AMC contracts</h3>${am.map(m=>{const s=amcState(m);return `<div class="row" style="justify-content:space-between"><span>${esc(m.scope)}</span><span class="pill ${s.k}">${s.t}</span></div>`;}).join('')||'<span class="muted">No AMC – upsell opportunity</span>'}</div>
+    <div class="panel"><h3>Service tickets</h3>${tk.map(t=>{const s=tkState(t);return `<div class="row" style="justify-content:space-between"><span><span class="mono">${t.id}</span> ${esc(t.issue)}</span><span class="pill ${s.k}">${s.t}</span></div>`;}).join('')||'<span class="muted">None</span>'}</div>
+  </div>`);
+}
+
+/* ---------- quotes ---------- */
+function vQuotes(){
+  const list=S.quotes.filter(q=>{const o=S.opps.find(x=>x.id===q.opp);return o&&inBranch(o.branch);});
+  if(!list.find(q=>q.id===ui.quote)&&list[0]) ui.quote=list[0].id;
+  const q=list.find(x=>x.id===ui.quote);
+  let detail='<div class="panel"><p class="sub">No quotations for this branch yet.</p></div>';
+  if(q){
+    const o=S.opps.find(x=>x.id===q.opp), basic=q.boq.reduce((s,r)=>s+r[2]*r[3],0), net=basic*(1-(q.disc||0)/100), gst=net*0.18;
+    detail=`<div class="panel">
+      <div class="panel-h"><div><span class="mono muted">${q.id} · ${q.rev} · ${fDate(q.date)} · valid ${q.valid} days</span><h2 style="font-size:19px">${esc(acc(o.acc).name)}</h2><p class="sub">${esc(o.title)}</p></div><span class="pill ${q.status==='Draft'?'':q.status==='Negotiation'?'warn':'info'}">${esc(q.status)}</span></div>
+      <div class="revs"><span class="sub">Revisions:</span>${q.revs.map(r=>`<span class="pill">${r[0]} · ${r[1]!=null?fmtL(r[1]):fmtL(Math.round(net/1e5))} · ${fDate(r[2])}</span>`).join('')}</div>
+      <div class="tbl-wrap boq"><table>
+        <thead><tr><th>#</th><th>BOQ item</th><th>Unit</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <tbody>${q.boq.map((r,i)=>`<tr><td class="muted">${i+1}</td><td>${esc(r[0])}</td><td>${r[1]}</td><td class="num"><input type="number" min="0" id="qty-${q.id}-${i}" data-qty="${i}" value="${r[2]}" aria-label="Quantity for ${esc(r[0])}"></td><td class="num mono">${inr(r[3])}</td><td class="num mono">${inr(r[2]*r[3])}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <label class="sub" for="qdisc" style="display:flex;gap:8px;align-items:center">Discount % <input type="number" id="qdisc" min="0" max="15" step="0.5" value="${q.disc||0}" style="width:74px"></label>
+        <div class="tot"><span class="muted">Basic value</span><span class="num mono">${inr(basic)}</span>
+          <span class="muted">Less discount ${q.disc||0}%</span><span class="num mono">− ${inr(basic-net)}</span>
+          <span class="muted">GST 18%</span><span class="num mono">${inr(gst)}</span>
+          <span class="strong">Quotation total</span><span class="num g">${inr(net+gst)}</span></div>
+      </div>
+      ${(q.disc||0)>5?'<p class="pill warn" style="align-self:flex-start">Discount above 5% needs Branch Head approval</p>':''}
+      <div class="row end"><button class="btn" type="button" data-newrev="${q.id}">Save as new revision</button><button class="btn pri" type="button" data-sendq="${q.id}">Mark as sent to client</button></div>
+    </div>`;
+  }
+  $('#v-quotes').innerHTML=`<p class="sub">BOQ-based quotations with a revision history, so R0, R1 and R2 are never lost in email threads. Edit quantities or discount to see totals update.</p>
+  <div class="qgrid"><div class="qlist">${list.map(x=>{const o=S.opps.find(y=>y.id===x.opp);return `<button type="button" class="qitem" data-q="${x.id}" aria-current="${x.id===ui.quote}"><span class="r1"><span class="mono">${x.id} ${x.rev}</span><span class="pill ${x.status==='Draft'?'':x.status==='Negotiation'?'warn':'info'}">${x.status}</span></span><span class="strong">${esc(acc(o.acc).name)}</span><span class="r1"><span class="muted">${esc(o.title)}</span><span class="mono">${fmtL(Math.round(quoteTotal(x)/1e5))}</span></span></button>`;}).join('')}</div>${detail}</div>`;
+}
+
+/* ---------- AMC ---------- */
+function vAmc(){
+  const f=ui.amcFilter;
+  const all=S.amcs.filter(a=>inBranch(acc(a.acc).branch));
+  const list=all.filter(a=>f==='All'||(f==='Due'?['warn','crit','info'].includes(amcState(a).k):amcState(a).k==='good'));
+  const tv=all.reduce((s,a)=>s+a.val,0);
+  $('#v-amc').innerHTML=`
+  <div class="kpis">
+    <div class="kpi"><span class="l">Contracts</span><span class="v">${all.length}</span><span class="n">Annual value ${fmtL(tv)}</span></div>
+    <div class="kpi"><span class="l">Due for renewal ≤ 60 d</span><span class="v">${all.filter(a=>amcState(a).k==='warn').length}</span><span class="n">auto-reminders at 60 / 30 / 7 days</span></div>
+    <div class="kpi"><span class="l">Lapsed</span><span class="v">${all.filter(a=>amcState(a).k==='crit').length}</span><span class="n bad">revenue at risk</span></div>
+    <div class="kpi"><span class="l">PPM visits done</span><span class="v">${all.reduce((s,a)=>s+a.visits[0],0)}/${all.reduce((s,a)=>s+a.visits[1],0)}</span><span class="n">this contract year</span></div>
+  </div>
+  <div class="panel-h"><p class="sub">Renewal reminders go to the account owner; one click drafts the renewal quote.</p><div class="seg" role="group" aria-label="Filter AMCs">${['All','Due','Active'].map(x=>`<button type="button" data-amcf="${x}" aria-pressed="${f===x}">${x==='Due'?'Due / lapsed':x}</button>`).join('')}</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Contract</th><th>Client / site</th><th>Scope</th><th class="num">Value / yr</th><th>Expiry</th><th>PPM visits</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(a=>{const s=amcState(a);return `<tr><td class="mono">${a.id}</td><td><div class="strong">${esc(acc(a.acc).name)}</div><div class="muted">${esc(a.site)}</div></td><td>${esc(a.scope)}</td><td class="num mono">${fmtL(a.val)}</td><td style="white-space:nowrap">${fDate(a.end)}</td><td class="mono">${a.visits[0]} / ${a.visits[1]}</td><td><span class="pill ${s.k}">${s.t}</span></td>
+    <td class="num">${['warn','crit'].includes(s.k)?`<button class="btn sm pri" type="button" data-renew="${a.id}">Send renewal quote</button>`:s.k==='info'?`<button class="btn sm" type="button" data-renewed="${a.id}">Mark renewed</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="muted">No contracts match.</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+/* ---------- service ---------- */
+const TECHS=['Manoj K','Suresh V','Venkat R','Dinesh S','Imran A'];
+function vService(){
+  const f=ui.tkFilter;
+  const list=S.tickets.filter(t=>inBranch(acc(t.acc).branch)).filter(t=>f==='All'||(f==='Open'?t.status!=='Resolved':f==='Breached'?(t.status!=='Resolved'&&tkSla(t)<0):t.status==='Resolved'));
+  $('#v-service').innerHTML=`
+  <div class="panel-h"><p class="sub">Complaints logged by phone, WhatsApp or the client portal. The SLA clock runs by priority: P1 4 h, P2 24 h, P3 72 h.</p>
+  <div class="row"><div class="seg" role="group" aria-label="Filter tickets">${['Open','Breached','Resolved','All'].map(x=>`<button type="button" data-tkf="${x}" aria-pressed="${f===x}">${x}</button>`).join('')}</div><button class="btn" type="button" id="newTkBtn">+ New ticket</button></div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Ticket</th><th>Pri</th><th>Client / site</th><th>Issue</th><th>Logged</th><th>SLA</th><th>Technician</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(t=>{const s=tkState(t);return `<tr><td class="mono">${t.id}</td><td><span class="pill ${t.pri==='P1'?'crit':t.pri==='P2'?'warn':''}">${t.pri}</span></td><td><div class="strong">${esc(acc(t.acc).name)}</div><div class="muted">${esc(t.site)}</div></td><td>${esc(t.issue)}<div class="muted mono">${esc(t.amc||'')}</div></td><td class="muted" style="white-space:nowrap">${ago(t.at)}</td><td><span class="pill ${s.k}">${s.t}</span></td>
+    <td>${t.status==='Resolved'?esc(t.tech):`<select data-tech="${t.id}" id="tech-${t.id}" aria-label="Technician for ${t.id}"><option value="">Unassigned</option>${TECHS.map(x=>`<option${x===t.tech?' selected':''}>${x}</option>`).join('')}</select>`}</td>
+    <td>${esc(t.status)}</td><td class="num">${t.status!=='Resolved'?`<button class="btn sm" type="button" data-resolve="${t.id}">Resolve</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="muted">No tickets match.</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+/* ---------- plan ---------- */
+function vPlan(){
+  $('#v-plan').innerHTML=`<div class="plan">
+  <div class="hero">
+    <span class="eyebrow">Business analysis · CRM proposal · draft for discussion</span>
+    <h2>One system from first enquiry to AMC renewal</h2>
+    <p>Spaceair has grown from 10 people in 2007 to about 200, with 5 locations, 4 MEP disciplines, and a client list that includes Amazon, Reliance, Zoho and KIA. Sales, estimation, projects and service each keep their own records today. This CRM connects them so management sees one pipeline, one order book, and every AMC that is due for renewal.</p>
+    <div class="facts"><span><b>5</b> locations: Chennai HQ, Bangalore, Hyderabad, Renigunta, Colombo</span><span><b>4</b> disciplines: HVAC &amp; life safety, electrical, plumbing, retrofit/AMC</span><span><b>B2B</b> clients: IT parks, data centres, plants, retail chains</span></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel"><h2>Problems we expect to solve</h2><p class="sub">Hypotheses to confirm in the meeting</p><ul>
+      <li>Enquiries arrive by phone, email, WhatsApp, the website, tenders and LG dealer referrals, with no single queue or response-time tracking.</li>
+      <li>There is no branch-wise view of pipeline, win rate or order book for management.</li>
+      <li>BOQs and quotation revisions live in Excel and email, so it is hard to see what was quoted to whom and at what price.</li>
+      <li>AMC renewals are tracked manually, so contracts lapse and recurring revenue is lost.</li>
+      <li>Service complaints are handled over calls and WhatsApp, with no SLA measurement or technician accountability.</li>
+      <li>Handover from sales to projects to service loses client context.</li></ul></div>
+    <div class="panel"><h2>Users &amp; what they get</h2><ul>
+      <li><b>Founder / MD:</b> live dashboard of pipeline, orders won, AMC revenue and SLA breaches across branches.</li>
+      <li><b>Branch heads:</b> team pipeline, overdue follow-ups, discount approvals.</li>
+      <li><b>Sales / BD engineers:</b> enquiry queue, pipeline, activity log, reminders.</li>
+      <li><b>Estimation / design:</b> BOQ-based quotes with revision history.</li>
+      <li><b>Service manager &amp; technicians:</b> tickets, SLA clock, PPM schedule, job cards.</li>
+      <li><b>Accounts:</b> PO and AMC values ready for invoicing (Tally / Zoho Books).</li></ul></div>
+  </div>
+
+  <div class="panel"><h2>Lead-to-renewal flow the CRM covers</h2>
+    <div class="flow">
+      <div class="st sales"><b>Enquiry</b><small>web, phone, WhatsApp, tender</small></div><span class="arr">→</span>
+      <div class="st sales"><b>Qualify</b><small>scope, budget, timeline</small></div><span class="arr">→</span>
+      <div class="st sales"><b>Site survey</b><small>heat load, drawings</small></div><span class="arr">→</span>
+      <div class="st sales"><b>BOQ &amp; design</b><small>estimation</small></div><span class="arr">→</span>
+      <div class="st sales"><b>Quotation R0…Rn</b><small>approval limits</small></div><span class="arr">→</span>
+      <div class="st sales"><b>Negotiation</b><small>L1 comparison</small></div><span class="arr">→</span>
+      <div class="st ops"><b>PO / LOI</b><small>handover to projects</small></div><span class="arr">→</span>
+      <div class="st ops"><b>Execution &amp; handover</b><small>milestone billing</small></div><span class="arr">→</span>
+      <div class="st svc"><b>AMC</b><small>PPM visits</small></div><span class="arr">→</span>
+      <div class="st svc"><b>Service tickets</b><small>SLA</small></div><span class="arr">→</span>
+      <div class="st svc"><b>Renewal / retrofit</b><small>back to pipeline</small></div>
+    </div>
+    <div class="legend"><span>Top border colour: <b style="color:var(--accent)">sales</b> · <b style="color:var(--plumb)">projects</b> · <b style="color:var(--elec)">service</b></span></div>
+  </div>
+
+  <div><h2 style="margin-bottom:10px">Phased roadmap</h2>
+  <div class="cards3">
+    <div class="pcard now"><span class="when">PHASE 1 · WEEKS 1–8 · THIS MVP</span><h2>Sales + AMC core</h2><ul>
+      <li>Enquiry capture: website form, email, manual entry</li><li>Clients, contacts &amp; sites</li><li>Pipeline with MEP stages and follow-up reminders</li>
+      <li>BOQ quotations with revisions, approvals and PDF output</li><li>AMC register with renewal alerts</li><li>Basic service tickets with SLA</li><li>Branch-wise dashboards and role-based access</li></ul></div>
+    <div class="pcard"><span class="when">PHASE 2 · WEEKS 9–16</span><h2>Field &amp; integrations</h2><ul>
+      <li>WhatsApp Business API: enquiries in, updates out</li><li>Technician mobile app: job cards, photos, client sign-off</li><li>PPM visit scheduling and service reports</li>
+      <li>Tally / Zoho Books sync for invoices and collections</li><li>Tender tracker with EMD and due dates</li><li>INR + LKR multi-currency for Colombo</li></ul></div>
+    <div class="pcard"><span class="when">PHASE 3 · MONTH 5 ONWARDS</span><h2>Client portal &amp; AI</h2><ul>
+      <li>Client portal: raise tickets, download AMC reports</li><li>AI reads tender and BOQ PDFs into draft quotes</li><li>Win-probability scoring and follow-up drafts</li>
+      <li>Equipment alerts from BMS / LG cloud creating tickets automatically</li><li>Upsell prompts: retrofit for units older than 10 years</li></ul></div>
+  </div></div>
+
+  <div class="grid2">
+    <div class="panel"><h2>Success measures (90 days after go-live)</h2><ul>
+      <li>100% of enquiries logged; median first response under 4 working hours</li>
+      <li>Quotation turnaround time measured per branch</li>
+      <li>AMC renewal rate above 90%, with zero silent lapses</li>
+      <li>P1 service SLA compliance above 95%</li>
+      <li>Monthly MIS generated from the CRM, with no manual Excel</li></ul></div>
+    <div class="panel"><h2>Build options</h2><ul>
+      <li><b>Custom web app (recommended):</b> fits the MEP flow closely (BOQ, revisions, AMC, SLA), has no per-user licence fees, and makes AI features easy to add. It needs a build and support partner.</li>
+      <li><b>Off-the-shelf (Zoho CRM + Desk, Salesforce):</b> faster start, but BOQ quotes and AMC renewals need heavy customisation and licences grow with headcount.</li>
+      <li>Final choice depends on user count, budget and in-house IT, all to be confirmed in discovery.</li></ul></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel"><h2>Questions to ask in the meeting</h2><ol class="qs">
+      <li>How many people would use it per branch: sales, estimation, service, technicians?</li>
+      <li>What tools are used today (Excel, Tally, Zoho, WhatsApp groups)? What data must be migrated?</li>
+      <li>Where do most enquiries come from, and who responds first?</li>
+      <li>What is the quotation approval hierarchy? What are the discount limits per role?</li>
+      <li>How many AMCs are running, and what is their annual value? How are renewals tracked now?</li>
+      <li>Do technicians carry smartphones? Is offline use needed at sites?</li>
+      <li>Which reports does the founder review weekly or monthly?</li>
+      <li>What are the Sri Lanka specifics: LKR, local tax, separate entity?</li>
+      <li>Who owns the CRM internally, and what is the target go-live date?</li></ol></div>
+    <div class="panel"><h2>Risks &amp; how we handle them</h2><ul>
+      <li><b>Adoption by sales and field staff:</b> keep it mobile-first, keep entry fast, use WhatsApp-style updates, and give every branch a CRM champion.</li>
+      <li><b>Messy legacy data:</b> migrate only active clients, open opportunities and live AMCs first.</li>
+      <li><b>Scope creep into ERP or project management:</b> the CRM stops at PO handover and links out to accounts and projects tools.</li>
+      <li><b>Data security for client sites:</b> role- and branch-based access, audit log, daily backups.</li></ul></div>
+  </div>
+  <p class="sub">All figures, names and records in this prototype are sample data for demonstration. Client names come from Spaceair's public client list and do not represent real transactions.</p>
+  </div>`;
+}
+
+/* ---------- new enquiry modal ---------- */
+function openEnqModal(){
+  const br=branch==='All'?'Chennai':branch;
+  $('#overlay').innerHTML=`<div class="scrim" data-close></div><form class="modal" id="enqForm" role="dialog" aria-modal="true" aria-labelledby="enqH">
+    <div class="panel-h"><h2 id="enqH" style="font-size:19px">New enquiry</h2><button class="x" type="button" data-close aria-label="Close">×</button></div>
+    <div class="form">
+      <label>Company<input type="text" id="f-co" required placeholder="e.g. Prestige Tech Park"></label>
+      <label>Contact person<input type="text" id="f-person" required placeholder="Name, designation"></label>
+      <label>Source<select id="f-src">${['Phone','Website form','WhatsApp','Email','Tender portal','LG dealer lead','Architect / PMC','Referral'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label>Division<select id="f-div">${Object.keys(DIVS).map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label>Branch<select id="f-branch">${BRANCHES.map(x=>`<option${x===br?' selected':''}>${x}</option>`).join('')}</select></label>
+      <label>Phone<input type="text" id="f-phone" placeholder="+91"></label>
+      <label class="full">Requirement<textarea id="f-req" rows="3" required placeholder="e.g. VRF for 3 floors, 60,000 sq ft, needs quote in 2 weeks"></textarea></label>
+    </div>
+    <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn pri" type="submit">Save enquiry</button></div>
+  </form>`;
+  $('#overlay').hidden=false; $('#f-co').focus();
+}
+
+/* ---------- render ---------- */
+function render(){
+  renderNav();
+  ({dashboard:vDashboard,enquiries:vEnquiries,pipeline:vPipeline,accounts:vAccounts,quotes:vQuotes,amc:vAmc,service:vService,plan:vPlan})[current]();
+}
+
+/* ---------- events ---------- */
+$('#branchSel').innerHTML=['All',...BRANCHES].map(b=>`<option value="${b}"${b===branch?' selected':''}>${b==='All'?'All branches':b}</option>`).join('');
+$('#branchSel').addEventListener('change',e=>{branch=e.target.value; try{localStorage.setItem(KEY+':branch',branch);}catch(_){} render();});
+$('#newEnqBtn').addEventListener('click',openEnqModal);
+$('#resetBtn').addEventListener('click',()=>{ S=seed(); save(); render(); toast('Demo data reset'); });
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-close],[data-enqf],[data-convert],[data-contact],[data-opp],[data-addnote],[data-acct],[data-q],[data-newrev],[data-sendq],[data-amcf],[data-renew],[data-renewed],[data-tkf],[data-resolve],[data-oppl],[data-openq],#newTkBtn');
+  if(!t) return;
+  const d=t.dataset;
+  if('close' in d){ closeOverlay(); return; }
+  if(d.enqf){ ui.enqFilter=d.enqf; render(); }
+  else if(d.convert){
+    const en=S.enqs.find(x=>x.id===d.convert); en.status='Converted';
+    let a=S.accounts.find(x=>x.name===en.co);
+    if(!a){ a={id:'A'+(S.accounts.length+1).toString().padStart(2,'0'),name:en.co,ind:'New client',city:en.branch,branch:en.branch,tier:'New'}; S.accounts.push(a); S.contacts[a.id]=[[en.person,'Primary contact']]; }
+    const id='O-'+(1041+S.opps.length);
+    S.opps.push({id,acc:a.id,title:en.req,div:en.div,branch:en.branch,stage:'Qualified',val:25,owner:'Unassigned',next:'Schedule site survey',due:dAgo(2),src:en.src});
+    addLog(id,`Created from enquiry ${en.id}`);
+    save(); render(); toast(`${en.id} converted to opportunity ${id}`);
+  }
+  else if(d.contact){ const en=S.enqs.find(x=>x.id===d.contact); en.status='Contacted'; save(); render(); toast(`Call logged for ${en.co}`); }
+  else if(d.opp){ openOpp(d.opp); }
+  else if(d.oppl){ e.preventDefault(); openOpp(d.oppl); }
+  else if(d.openq){ ui.quote=d.openq; closeOverlay(); }
+  else if(d.addnote){ const v=$('#oppNote').value.trim(); if(!v){ $('#oppNote').focus(); return; } addLog(d.addnote,v); openOpp(d.addnote); toast('Added to timeline'); }
+  else if(d.acct){ openAcct(d.acct); }
+  else if(d.q){ ui.quote=d.q; render(); }
+  else if(d.newrev){ const q=S.quotes.find(x=>x.id===d.newrev); const cur=q.revs[q.revs.length-1]; cur[1]=Math.round(quoteTotal(q)/1e5); const n='R'+q.revs.length; q.revs.push([n,null,NOW.toISOString()]); q.rev=n; q.status='Draft'; save(); render(); toast(`${q.id} saved as ${n}`); }
+  else if(d.sendq){ const q=S.quotes.find(x=>x.id===d.sendq); q.status='Sent'; const o=S.opps.find(x=>x.id===q.opp); o.val=Math.round(quoteTotal(q)/1e5); if(['Qualified','Survey','BOQ'].includes(o.stage)) o.stage='Quotation'; addLog(o.id,`Quotation ${q.id} ${q.rev} sent – ${fmtL(o.val)}`); save(); render(); toast(`${q.id} ${q.rev} marked as sent; pipeline value updated`); }
+  else if(d.amcf){ ui.amcFilter=d.amcf; render(); }
+  else if(d.renew){ const a=S.amcs.find(x=>x.id===d.renew); a.status='Renewal quote sent'; save(); render(); toast(`Renewal quote drafted for ${acc(a.acc).name} at ${fmtL(Math.round(a.val*1.07*10)/10)} (+7%)`); }
+  else if(d.renewed){ const a=S.amcs.find(x=>x.id===d.renewed); a.status='Renewed'; a.end=new Date(new Date(a.end).getTime()+365*DAY).toISOString(); a.visits=[0,4]; save(); render(); toast('AMC renewed for 12 months'); }
+  else if(d.tkf){ ui.tkFilter=d.tkf; render(); }
+  else if(d.resolve){ const tk=S.tickets.find(x=>x.id===d.resolve); tk.status='Resolved'; if(!tk.tech) tk.tech='Manoj K'; save(); render(); toast(`${tk.id} resolved; client notified`); }
+  else if(t.id==='newTkBtn'){
+    const id='T-'+(5501+S.tickets.length);
+    const a=S.accounts.find(x=>inBranch(x.branch))||S.accounts[0];
+    S.tickets.unshift({id,acc:a.id,site:a.city,issue:'Low cooling reported by client (logged from phone)',pri:'P2',sla:24,at:NOW.toISOString(),status:'Open',tech:'',amc:''});
+    ui.tkFilter='Open'; save(); render(); toast(`${id} created, 24 h SLA started`);
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && $('#overlay').innerHTML) closeOverlay();
+  if(e.key==='Enter'){ const c=e.target.closest('[data-opp],[data-acct]'); if(c){ c.dataset.opp?openOpp(c.dataset.opp):openAcct(c.dataset.acct); } }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.oppstage){ moveOpp(t.dataset.oppstage,t.value); }
+  else if(t.dataset.tech!==undefined && t.dataset.tech){ const tk=S.tickets.find(x=>x.id===t.dataset.tech); tk.tech=t.value; if(t.value&&tk.status==='Open') tk.status='Assigned'; save(); render(); toast(t.value?`${tk.id} assigned to ${t.value}`:`${tk.id} unassigned`); }
+  else if(t.dataset.qty!==undefined){ const q=S.quotes.find(x=>x.id===ui.quote); q.boq[+t.dataset.qty][2]=Math.max(0,+t.value||0); save(); render(); }
+  else if(t.id==='qdisc'){ const q=S.quotes.find(x=>x.id===ui.quote); q.disc=Math.min(15,Math.max(0,+t.value||0)); save(); render(); }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='acctSearch'){ ui.acctQ=e.target.value; const pos=e.target.selectionStart; vAccounts(); const s=$('#acctSearch'); s.focus(); s.setSelectionRange(pos,pos); }
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='enqForm') return;
+  e.preventDefault();
+  const v=id=>$('#'+id).value.trim();
+  const id='E-'+(2301+S.enqs.length);
+  S.enqs.unshift({id,at:NOW.toISOString(),src:v('f-src'),co:v('f-co'),person:v('f-person'),req:v('f-req'),div:v('f-div'),branch:v('f-branch'),status:'New'});
+  save(); closeOverlay(); ui.enqFilter='Open';
+  if(current!=='enquiries') location.hash='enquiries'; else render();
+  toast(`Enquiry ${id} saved and assigned to the ${v('f-branch')||'branch'} queue`);
+});
+/* drag & drop */
+document.addEventListener('dragstart',e=>{ const c=e.target.closest&&e.target.closest('.card'); if(!c) return; c.classList.add('dragging'); e.dataTransfer.setData('text/plain',c.dataset.opp); e.dataTransfer.effectAllowed='move'; });
+document.addEventListener('dragend',e=>{ const c=e.target.closest&&e.target.closest('.card'); if(c) c.classList.remove('dragging'); document.querySelectorAll('.col.over').forEach(x=>x.classList.remove('over')); });
+document.addEventListener('dragover',e=>{ const col=e.target.closest&&e.target.closest('.col'); if(!col) return; e.preventDefault(); document.querySelectorAll('.col.over').forEach(x=>x!==col&&x.classList.remove('over')); col.classList.add('over'); });
+document.addEventListener('drop',e=>{ const col=e.target.closest&&e.target.closest('.col'); if(!col) return; e.preventDefault(); col.classList.remove('over'); moveOpp(e.dataTransfer.getData('text/plain'),col.dataset.stage); });
+
+$('#overlay').hidden=true;
+go(location.hash.slice(1)||'dashboard');
+})();
+</script>
