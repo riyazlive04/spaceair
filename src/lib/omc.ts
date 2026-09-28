@@ -5,7 +5,9 @@
  * left for the estimator (yellow). A "Product Codes" sheet lists every code in the OMC format.
  */
 import ExcelJS from "exceljs";
-import type { QuoteItem } from "@/db/schema";
+import type { ProductCode, QuoteItem } from "@/db/schema";
+import { categoryText, kitFor } from "@/lib/product-codes/engine";
+import { ITEMS } from "@/lib/product-codes/master";
 import type { LineContext } from "@/lib/boq";
 
 type Meta = { title: string; code: string; revision: number; client: string; preparedBy: string };
@@ -34,7 +36,7 @@ export function omcSections(items: QuoteItem[], ctx: Map<string, LineContext>) {
   return out;
 }
 
-export async function buildOmcWorkbook(meta: Meta, items: QuoteItem[], ctx: Map<string, LineContext>) {
+export async function buildOmcWorkbook(meta: Meta, items: QuoteItem[], ctx: Map<string, LineContext>, register: Register) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Spaceair CRM";
   const summary = wb.addWorksheet("Summary");
@@ -167,14 +169,49 @@ export async function buildOmcWorkbook(meta: Meta, items: QuoteItem[], ctx: Map<
   summary.getCell(`B${s + 2}`).font = { name: FONT, italic: true, size: 9, color: { argb: "FF595959" } };
   [7, 36, 15, 15, 15, 15, 15, 15, 10].forEach((w, i) => (summary.getColumn(i + 1).width = w));
 
-  addProductCodesSheet(wb, items, ctx);
+  addProductCodeOmcSheet(wb, items, ctx, register);
   wb.calcProperties.fullCalcOnLoad = true;
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
-/** Unique codes in SPACEAIR's OMC product-code format (7 columns). */
-export function addProductCodesSheet(wb: ExcelJS.Workbook, items: QuoteItem[], ctx: Map<string, LineContext>) {
-  const ws = wb.addWorksheet("Product Codes", { views: [{ state: "frozen", ySplit: 1 }] });
+export type Register = Map<string, ProductCode>;
+type PcoRow = { code: string; name: string; category: string; hsn: string; unit: string; description: string; abbreviation: string; component: boolean; approved: boolean; flag?: string | null };
+
+/** A component code's details: from the Code Register, else built from the item master. */
+function componentRow(code: string, unit: string, register: Register): PcoRow {
+  const known = register.get(code);
+  if (known) {
+    return { code, name: known.name, category: known.categoryText, hsn: known.hsn ?? "", unit, description: known.description || `Supply of ${known.name}`,
+      abbreviation: known.abbreviation ?? "", component: true, approved: true };
+  }
+  const item = ITEMS.find((i) => i.code === code.slice(2, 6));
+  const name = [item?.name.toUpperCase() ?? code.slice(2, 6), code.slice(6, 10), code.slice(10, 14)].filter((s) => s && !/^X+$/.test(s)).join(" - ");
+  return { code, name, category: categoryText(code[1]), hsn: item?.hsn ?? "", unit, description: `Supply of ${item?.name ?? name}`, abbreviation: "", component: true, approved: false };
+}
+
+/**
+ * The team's "Product Code OMC": every BOQ line in order, each followed by the components it is split into
+ * for purchasing (kits in master.ts - e.g. an insulated pipe brings aluminium cladding + nitrile insulation).
+ */
+export function productCodeOmcRows(items: QuoteItem[], ctx: Map<string, LineContext>, register: Register): PcoRow[] {
+  const rows: PcoRow[] = [];
+  for (const it of items) {
+    if (!it.productCode) continue;
+    const c = ctx.get(`${it.sheet}!${it.sourceRow}`);
+    const known = register.get(it.productCode);
+    rows.push({
+      code: it.productCode, name: it.productName ?? known?.name ?? "", category: it.codeInfo?.categoryText || known?.categoryText || "",
+      hsn: it.codeInfo?.hsn || known?.hsn || "", unit: it.unit, description: [c?.heading, c?.context, it.description, c?.trailing].filter(Boolean).join("\n"),
+      abbreviation: it.codeInfo?.abbreviation || known?.abbreviation || "", component: false, approved: it.codeApproved, flag: it.codeFlag,
+    });
+    for (const k of kitFor(it.productCode)) rows.push(componentRow(k, it.unit, register));
+  }
+  return rows;
+}
+
+/** Product Code OMC in SPACEAIR's 7-column format. Orange = code not approved yet; grey = component row. */
+export function addProductCodeOmcSheet(wb: ExcelJS.Workbook, items: QuoteItem[], ctx: Map<string, LineContext>, register: Register) {
+  const ws = wb.addWorksheet("Product Code OMC", { views: [{ state: "frozen", ySplit: 1 }] });
   const head = ["Product Code", "Product Name", "Category", "HSN Code", "Unit", "Description", "Abbreviation"];
   head.forEach((h, i) => {
     const c = ws.getRow(1).getCell(i + 1);
@@ -183,30 +220,25 @@ export function addProductCodesSheet(wb: ExcelJS.Workbook, items: QuoteItem[], c
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
     c.border = BOX;
   });
-  const seen = new Set<string>();
-  let r = 2;
-  for (const it of items) {
-    if (!it.productCode || seen.has(it.productCode)) continue;
-    seen.add(it.productCode);
-    const c = ctx.get(`${it.sheet}!${it.sourceRow}`);
-    const desc = [c?.heading, c?.context, it.description, c?.trailing].filter(Boolean).join("\n");
-    const row = ws.getRow(r++);
-    row.values = [it.productCode, it.productName ?? "", it.codeInfo?.categoryText ?? "", it.codeInfo?.hsn || null, it.unit, desc, it.codeInfo?.abbreviation ?? ""];
-    for (let i = 1; i <= 7; i++) {
-      const cell = row.getCell(i);
-      cell.font = i === 1 ? { name: "Consolas", size: 10, bold: true } : { name: FONT, size: 9 };
-      cell.alignment = { wrapText: i >= 6 || i === 2, vertical: "top" };
+  productCodeOmcRows(items, ctx, register).forEach((p, i) => {
+    const row = ws.getRow(i + 2);
+    row.values = [p.code, p.name, p.category, p.hsn || null, p.unit, p.description, p.abbreviation];
+    for (let c = 1; c <= 7; c++) {
+      const cell = row.getCell(c);
+      cell.font = c === 1 ? { name: "Consolas", size: 10, bold: !p.component } : { name: FONT, size: 9, color: p.component ? { argb: "FF595959" } : undefined };
+      cell.alignment = { wrapText: c >= 6 || c === 2, vertical: "top", indent: c === 2 && p.component ? 1 : 0 };
       cell.border = BOX;
-      if (!it.codeApproved) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE } };
+      if (!p.approved) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: p.component ? GREY : ORANGE } };
     }
-  }
-  [20, 38, 14, 11, 7, 80, 34].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+    if (!p.component && !p.approved && p.flag) row.getCell(1).note = p.flag;
+  });
+  [20, 42, 14, 11, 7, 80, 34].forEach((w, i) => (ws.getColumn(i + 1).width = w));
   return ws;
 }
 
-export async function buildProductCodesWorkbook(items: QuoteItem[], ctx: Map<string, LineContext>) {
+export async function buildProductCodeOmcWorkbook(items: QuoteItem[], ctx: Map<string, LineContext>, register: Register) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Spaceair CRM";
-  addProductCodesSheet(wb, items, ctx);
+  addProductCodeOmcSheet(wb, items, ctx, register);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

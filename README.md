@@ -14,7 +14,8 @@ Try it with `public/samples/Sample-Unpriced-BOQ-HVAC.xlsx` (fictional project, g
 
 1. **Selling Price**: the customer's own workbook with supply and installation rates written into it. Only those cells change; images, comments, links and formulas in their file are kept.
 2. **Product Codes**: every line gets its 16-character SAPL code (Discipline, Category, Details, Free 1, Free 2, Free 3). Lines matching a code in the **Code Register** reuse it. The rest are coded by rules (`src/lib/product-codes`), the AI agent handles flagged lines (needs `ANTHROPIC_API_KEY`), and a person approves.
-3. **OMC**: the internal cost build-up (Basic, Dis, P&F, Freight, Erec, contingency, Insulation, Ins Erec, Misc → supply and install cost) with the product code on every line, plus the product-code list in the team's 7-column format.
+3. **OMC**: the internal cost build-up (Basic, Dis, P&F, Freight, Erec, contingency, Insulation, Ins Erec, Misc → supply and install cost) with the product code on every line.
+4. **Product Code OMC**: the team's 7-column list, with every BOQ line followed by the components it is split into for purchasing (kits in `master_data.py`, e.g. insulated pipe → aluminium cladding + nitrile insulation).
 
 Load codes the team has already issued into the register (reused on every later project):
 

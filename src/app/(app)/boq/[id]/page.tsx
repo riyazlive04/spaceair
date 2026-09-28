@@ -76,7 +76,7 @@ export default async function BoqDetail(props: PageProps<"/boq/[id]">) {
           <p className="text-[13px]">{s.approved === s.total ? "All codes approved." : <><b className="font-mono">{s.total - s.approved}</b> lines not approved yet: they show orange in the OMC.</>}</p>
           <div className="flex flex-wrap gap-2">
             <a className="btn btn-primary" href={`/api/quotations/${q.id}/omc`} download>Download OMC</a>
-            <a className="btn" href={`/api/quotations/${q.id}/omc?kind=codes`} download>Product code list</a>
+            <a className="btn" href={`/api/quotations/${q.id}/omc?kind=codes`} download>Download Product Code OMC</a>
           </div>
         </Card>
       </div>

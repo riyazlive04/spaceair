@@ -48,7 +48,7 @@ export default async function BoqHub(props: PageProps<"/boq">) {
               <Submit name="next" value="omc" className="btn-primary" pendingText="Building OMC…">Upload & download OMC</Submit>
             </div>
             <p className="col-span-full text-xs text-muted">
-              <b>Upload &amp; download OMC</b> does everything in one step: prices the BOQ, codes every line and downloads the OMC workbook (Summary, OMC with product codes, Product Codes list). Codes nobody has approved yet are orange; you can review them afterwards.
+              <b>Upload &amp; download OMC</b> does everything in one step: prices the BOQ, codes every line and downloads the OMC workbook (Summary, OMC with product codes, Product Code OMC with each line and its components). Codes nobody has approved yet are orange; you can review them afterwards.
             </p>
           </form>
         </Card>

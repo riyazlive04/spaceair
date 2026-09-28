@@ -4,7 +4,7 @@
  * last two characters using the item's rules from master.ts. Lines it cannot code confidently are
  * flagged for the AI agent / a human. Keep in step with the Python tool - eval_against_team.py scores both.
  */
-import { CATEGORIES, DISCIPLINES, ITEMS, MISC_CODE, SPECS, type ItemDef } from "./master";
+import { CATEGORIES, DISCIPLINES, ITEMS, KITS, MISC_CODE, SPECS, type ItemDef } from "./master";
 
 /** One BOQ line plus the text around it (heading, description block, lines just below it). */
 export type CodeLine = {
@@ -305,4 +305,11 @@ export function clashFlags(lines: { code: string; heading: string; line: string 
     byCode.set(l.code, set);
   }
   return new Set([...byCode].filter(([, h]) => h.size > 1).map(([c]) => c));
+}
+
+/** Component codes an item is split into for purchasing (Product Code OMC). Details + spec kit first, then Details alone. */
+export function kitFor(code: string): string[] {
+  const details = code.slice(2, 6), spec = code.slice(10, 14), size = code.slice(6, 10);
+  const kit = KITS.find(([d, s]) => d === details && s === spec) ?? KITS.find(([d, s]) => d === details && !s);
+  return kit ? kit[2].map((c) => c.replace("{F1}", size)) : [];
 }
