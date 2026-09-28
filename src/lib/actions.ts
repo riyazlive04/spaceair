@@ -12,6 +12,7 @@ import { uid, nextCode, getSettings } from "@/lib/automation/ctx";
 import { RULES } from "@/lib/automation/rules";
 import { quoteTotals, money, DAY } from "@/lib/format";
 import { stageLabel, type StageKey } from "@/lib/constants";
+import * as PC from "@/lib/product-codes/run";
 
 async function flash(msg: string) {
   (await cookies()).set("sa_flash", encodeURIComponent(msg), { path: "/", maxAge: 20 });
@@ -244,7 +245,23 @@ const QuoteSave = z.object({
   discountPct: z.number().min(0).max(40),
   validityDays: z.number().int().min(1).max(180),
   terms: z.string().optional(),
-  items: z.array(z.object({ description: z.string().min(1), unit: z.string(), qty: z.number().min(0), rate: z.number().min(0) })),
+  items: z.array(
+    z.object({
+      description: z.string().min(1),
+      unit: z.string(),
+      qty: z.number().min(0),
+      rate: z.number().min(0),
+      supplyRate: z.number().min(0).nullish(),
+      installRate: z.number().min(0).nullish(),
+      qro: z.boolean().optional(),
+      itemNo: z.string().nullish(),
+      section: z.string().nullish(),
+      sheet: z.string().nullish(),
+      sourceRow: z.number().int().nullish(),
+      floorQty: z.record(z.string(), z.number()).nullish(),
+      rateSource: z.enum(["manual", "library", "estimated"]).nullish(),
+    }),
+  ),
 });
 export async function saveQuotation(id: string, payload: z.infer<typeof QuoteSave>) {
   await requireUser();
@@ -253,9 +270,26 @@ export async function saveQuotation(id: string, payload: z.infer<typeof QuoteSav
   if (!q || !["draft", "approved"].includes(q.status)) return { ok: false, error: "Only draft quotations can be edited. Create a new revision." };
   await db.update(S.quotations).set({ discountPct: d.discountPct, validityDays: d.validityDays, terms: d.terms, status: "draft" }).where(eq(S.quotations.id, id));
   await db.delete(S.quoteItems).where(eq(S.quoteItems.quotationId, id));
-  if (d.items.length) await db.insert(S.quoteItems).values(d.items.map((it, sort) => ({ id: uid(), quotationId: id, ...it, sort })));
+  if (d.items.length)
+    await db.insert(S.quoteItems).values(
+      d.items.map((it, sort) => {
+        const split = it.supplyRate != null || it.installRate != null;
+        return { id: uid(), quotationId: id, ...it, rate: split ? (it.supplyRate ?? 0) + (it.installRate ?? 0) : it.rate, qro: !!it.qro, sort };
+      }),
+    );
+  const items = await db.select().from(S.quoteItems).where(eq(S.quoteItems.quotationId, id));
+  await db.update(S.opportunities).set({ value: quoteTotals(items, d.discountPct, q.gstPct).net }).where(eq(S.opportunities.id, q.opportunityId));
   refresh();
   return { ok: true };
+}
+
+export async function saveMakes(id: string, selected: Record<string, string>) {
+  await requireUser();
+  const q = await db.query.quotations.findFirst({ where: eq(S.quotations.id, id) });
+  if (!q?.makes) return;
+  await db.update(S.quotations).set({ makes: q.makes.map((m) => ({ ...m, selected: selected[m.item] ?? m.selected })) }).where(eq(S.quotations.id, id));
+  await flash("Selected makes saved; they will be filled into the client's BOQ");
+  refresh();
 }
 
 export async function submitQuotation(id: string) {
@@ -317,9 +351,10 @@ export async function toggleChecklist(projectId: string, idx: number) {
   await requireUser();
   const p = await db.query.projects.findFirst({ where: eq(S.projects.id, projectId) });
   if (!p) return;
-  const list = p.checklist.map((c, i) => (i === idx ? { ...c, done: !c.done } : c));
+  const list = p.checklist.map((c, i) => (i === idx ? { ...c, done: !c.done, doneAt: !c.done ? new Date().toISOString() : undefined } : c));
   const done = list.filter((c) => c.done).length;
-  await db.update(S.projects).set({ checklist: list, status: done === list.length ? "execution" : p.status === "completed" ? "completed" : "handover", progress: Math.max(p.progress, Math.round((done / list.length) * 20)) }).where(eq(S.projects.id, projectId));
+  await db.update(S.projects).set({ checklist: list, progress: Math.round((done / list.length) * 100) }).where(eq(S.projects.id, projectId));
+  await emit("project.updated", { id: projectId });
   refresh();
 }
 export async function updateProject(projectId: string, f: FormData) {
@@ -461,5 +496,47 @@ export async function saveSettings(f: FormData) {
     .values({ key: "app", value: { approvalMatrix: { salesMaxDiscount: n("salesMaxDiscount"), branchHeadMaxDiscount: n("branchHeadMaxDiscount"), ownerValueLakhs: n("ownerValueLakhs") }, sla: { P1: n("P1"), P2: n("P2"), P3: n("P3") }, enquiryResponseHours: n("enquiryResponseHours") } })
     .onConflictDoUpdate({ target: S.settings.key, set: { value: { approvalMatrix: { salesMaxDiscount: n("salesMaxDiscount"), branchHeadMaxDiscount: n("branchHeadMaxDiscount"), ownerValueLakhs: n("ownerValueLakhs") }, sla: { P1: n("P1"), P2: n("P2"), P3: n("P3") }, enquiryResponseHours: n("enquiryResponseHours") } } });
   await flash("Delegation matrix & SLA policy saved");
+  refresh();
+}
+
+/* ───────── product codes & OMC ───────── */
+const CODE_ROLES = ["owner", "branch_head", "sales", "estimator", "procurement"];
+async function codeUser() {
+  const u = await requireUser();
+  if (!CODE_ROLES.includes(u.role)) throw new Error("Not allowed");
+  return u;
+}
+
+export async function generateProductCodes(quotationId: string) {
+  await codeUser();
+  const r = await PC.generateCodes(quotationId);
+  await flash(`Rules coded ${r.coded} of ${r.total} lines (lines already coded by a person or the AI were kept)`);
+  refresh();
+}
+
+export async function aiReviewCodes(quotationId: string) {
+  const u = await codeUser();
+  const r = await PC.aiReview(quotationId);
+  await log("quotation", quotationId, `AI reviewed ${r.done} product codes`, u.id);
+  await flash(r.stopped ? `AI stopped after ${r.done} lines: ${r.stopped}` : `AI coded ${r.done} lines${r.failed ? `, ${r.failed} failed` : ""}${r.remaining ? `, ${r.remaining} still to review - run again` : ""}`);
+  refresh();
+}
+
+export async function setProductCode(itemId: string, f: FormData) {
+  await codeUser();
+  try {
+    await PC.setCode(itemId, str(f, "code"), str(f, "name"));
+    await flash("Code saved");
+  } catch (e) {
+    await flash((e as Error).message);
+  }
+  refresh();
+}
+
+export async function approveProductCodes(quotationId: string, onlyClean: boolean) {
+  const u = await codeUser();
+  const r = await PC.approveCodes(quotationId, u.id, onlyClean);
+  await log("quotation", quotationId, `${u.name} approved ${r.approved} product codes (${r.added} new in the register)`, u.id);
+  await flash(`${r.approved} codes approved, ${r.added} added to the Code Register`);
   refresh();
 }

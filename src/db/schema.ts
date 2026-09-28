@@ -1,5 +1,9 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
+export type ChecklistItem = { item: string; done: boolean; phase?: string; doneAt?: string };
+export type BoqSheetMap = { sheet: string; headerRow: number; floors: string[]; cols: Record<string, number> };
+export type ApprovedMake = { item: string; makes: string[]; selected?: string; row?: number; col?: number; sheet?: string };
+
 const ts = (name: string) => integer(name, { mode: "timestamp_ms" });
 const created = () => ts("created_at").notNull().$defaultFn(() => new Date());
 
@@ -9,7 +13,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   role: text("role", {
-    enum: ["owner", "branch_head", "sales", "estimator", "service_manager", "technician", "accounts"],
+    enum: ["owner", "branch_head", "sales", "estimator", "projects", "procurement", "service_manager", "technician", "accounts"],
   }).notNull(),
   branch: text("branch").notNull(),
   title: text("title"),
@@ -23,6 +27,8 @@ export const accounts = sqliteTable("accounts", {
   city: text("city"),
   branch: text("branch").notNull(),
   tier: text("tier", { enum: ["Key", "Growth", "New"] }).notNull().default("New"),
+  kind: text("kind", { enum: ["client", "consultant", "architect"] }).notNull().default("client"),
+  sector: text("sector"),
   gstin: text("gstin"),
   phone: text("phone"),
   ownerId: text("owner_id"),
@@ -75,6 +81,9 @@ export const opportunities = sqliteTable("opportunities", {
     .default("qualified"),
   value: real("value").notNull().default(0),
   tonnage: real("tonnage"),
+  sector: text("sector"),
+  consultantId: text("consultant_id"),
+  architectId: text("architect_id"),
   ownerId: text("owner_id"),
   source: text("source"),
   nextAction: text("next_action"),
@@ -127,6 +136,14 @@ export const quotations = sqliteTable("quotations", {
   terms: text("terms"),
   kind: text("kind", { enum: ["project", "amc_renewal"] }).notNull().default("project"),
   amcId: text("amc_id"),
+  source: text("source", { enum: ["manual", "boq_import"] }).notNull().default("manual"),
+  docRef: text("doc_ref"),
+  dueAt: ts("due_at"),
+  fileName: text("file_name"),
+  sourceFile: text("source_file"),
+  meta: text("meta", { mode: "json" }).$type<Record<string, string>>(),
+  sheets: text("sheets", { mode: "json" }).$type<BoqSheetMap[]>(),
+  makes: text("makes", { mode: "json" }).$type<ApprovedMake[]>(),
   createdBy: text("created_by"),
   sentAt: ts("sent_at"),
   createdAt: created(),
@@ -135,11 +152,74 @@ export const quotations = sqliteTable("quotations", {
 export const quoteItems = sqliteTable("quote_items", {
   id: text("id").primaryKey(),
   quotationId: text("quotation_id").notNull(),
+  itemNo: text("item_no"),
+  section: text("section"),
   description: text("description").notNull(),
   unit: text("unit").notNull(),
   qty: real("qty").notNull(),
+  /** Combined unit rate = supply + installation (kept for simple quotes and totals). */
   rate: real("rate").notNull(),
+  supplyRate: real("supply_rate"),
+  installRate: real("install_rate"),
+  /** "Quote rate only": client wants a rate, quantity to be decided. Excluded from totals. */
+  qro: integer("qro", { mode: "boolean" }).notNull().default(false),
+  floorQty: text("floor_qty", { mode: "json" }).$type<Record<string, number>>(),
+  rateSource: text("rate_source", { enum: ["manual", "library", "estimated"] }),
+  sheet: text("sheet"),
+  sourceRow: integer("source_row"),
   sort: integer("sort").notNull().default(0),
+  /** 16-char SAPL product code used in the OMC; see src/lib/product-codes. */
+  productCode: text("product_code"),
+  productName: text("product_name"),
+  codeSource: text("code_source", { enum: ["rules", "ai", "manual", "register"] }),
+  /** Why a human should check this code (weak match, clash, AI question); null when confident. */
+  codeFlag: text("code_flag"),
+  codeApproved: integer("code_approved", { mode: "boolean" }).notNull().default(false),
+  codeInfo: text("code_info", { mode: "json" }).$type<ProductCodeInfo>(),
+});
+
+export type ProductCodeInfo = { categoryText: string; hsn: string; abbreviation: string; basis?: string; reasoning?: string; questions?: string[]; confidence?: string };
+
+/** Every product code issued, reused across projects so the same product keeps the same code. */
+export const productCodes = sqliteTable("product_codes", {
+  code: text("code").primaryKey(),
+  name: text("name").notNull(),
+  categoryText: text("category_text").notNull(),
+  hsn: text("hsn"),
+  unit: text("unit"),
+  description: text("description"),
+  abbreviation: text("abbreviation"),
+  source: text("source").notNull(),
+  /** Known problem with this code (e.g. issued for two different sizes); shown wherever it is reused. */
+  note: text("note"),
+  quotationId: text("quotation_id"),
+  createdBy: text("created_by"),
+  createdAt: created(),
+});
+
+/** Price book learned from every quotation sent; used to auto-price imported BOQs. */
+export const rateItems = sqliteTable("rate_items", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  section: text("section"),
+  description: text("description").notNull(),
+  unit: text("unit").notNull(),
+  supplyRate: real("supply_rate").notNull(),
+  installRate: real("install_rate").notNull(),
+  source: text("source"),
+  uses: integer("uses").notNull().default(1),
+  updatedAt: ts("updated_at").notNull().$defaultFn(() => new Date()),
+});
+
+/** Completed projects the team can quote as references without asking the Founder. */
+export const referenceProjects = sqliteTable("reference_projects", {
+  id: text("id").primaryKey(),
+  client: text("client").notNull(),
+  city: text("city").notNull(),
+  sector: text("sector").notNull(),
+  highlight: text("highlight").notNull(),
+  scope: text("scope", { mode: "json" }).$type<Record<string, string>>().notNull(),
+  private: integer("private", { mode: "boolean" }).notNull().default(false),
 });
 
 export const approvals = sqliteTable("approvals", {
@@ -171,8 +251,9 @@ export const projects = sqliteTable("projects", {
   value: real("value").notNull(),
   pmId: text("pm_id"),
   status: text("status", { enum: ["handover", "execution", "completed"] }).notNull().default("handover"),
+  phase: text("phase", { enum: ["award", "engineering", "procurement", "execution", "commissioning", "handover", "closed"] }).notNull().default("award"),
   progress: integer("progress").notNull().default(0),
-  checklist: text("checklist", { mode: "json" }).$type<{ item: string; done: boolean }[]>().notNull(),
+  checklist: text("checklist", { mode: "json" }).$type<ChecklistItem[]>().notNull(),
   createdAt: created(),
 });
 
@@ -286,3 +367,6 @@ export type Task = typeof tasks.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Role = User["role"];
+export type RateItem = typeof rateItems.$inferSelect;
+export type ReferenceProject = typeof referenceProjects.$inferSelect;
+export type ProductCode = typeof productCodes.$inferSelect;

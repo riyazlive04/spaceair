@@ -7,7 +7,7 @@
   body { font: 10pt/1.5 "IBM Plex Sans", "Segoe UI", sans-serif; color: #13222b; margin: 0; }
   h1, h2, h3 { font-family: "Archivo", "Arial Narrow", sans-serif; font-stretch: 86%; margin: 0; text-wrap: balance; }
   h2 { font-size: 19pt; margin: 0 0 8pt; padding-top: 2pt; }
-  h2 small { display: block; font: 600 8pt/1 "IBM Plex Mono", monospace; letter-spacing: .1em; color: #0a6f8c; margin-bottom: 6pt; }
+  h2 small { display: block; font: 600 8pt/1 "IBM Plex Mono", monospace; letter-spacing: .1em; color: #3a7266; margin-bottom: 6pt; }
   h3 { font-size: 12pt; margin: 12pt 0 4pt; }
   p { margin: 0 0 7pt; max-width: 170mm; }
   ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
@@ -17,10 +17,11 @@
   section { page-break-before: always; }
   .cover { height: 262mm; display: flex; flex-direction: column; justify-content: space-between; page-break-before: auto; }
   .brand { font: 800 30pt/1 "Archivo", sans-serif; font-stretch: 78%; letter-spacing: .04em; }
-  .brand span, .accent { color: #0a6f8c; }
+  .brand .crm { display:inline-block; font-size: 13pt; background:#3a7266; color:#fff; padding: 1.5mm 3mm; border-radius: 4px; letter-spacing:.08em; vertical-align: middle; }
+  .accent { color: #3a7266; }
   .cover h1 { font-size: 34pt; line-height: 1.05; margin-top: 30mm; max-width: 160mm; }
   .cover .lede { font-size: 12pt; color: #44555e; max-width: 150mm; margin-top: 8mm; }
-  .cover .meta { border-top: 2px solid #0a6f8c; padding-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; font-size: 9pt; }
+  .cover .meta { border-top: 2px solid #3a7266; padding-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; font-size: 9pt; }
   .cover .meta b { display: block; font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; color: #5d6e77; font-weight: 600; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
   .kpi { border: 1px solid #d3dcdb; border-radius: 6px; padding: 3mm; }
@@ -32,7 +33,7 @@
   td { border-bottom: 1px solid #d3dcdb; padding: 5pt 6pt; vertical-align: top; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
   .box { border: 1px solid #d3dcdb; border-radius: 6px; padding: 4mm; page-break-inside: avoid; }
-  .box.accent-b { border-top: 3px solid #0a6f8c; }
+  .box.accent-b { border-top: 3px solid #3a7266; }
   .flow { display: flex; flex-wrap: wrap; gap: 2mm; align-items: center; margin: 3mm 0 5mm; font-size: 8.5pt; }
   .flow span.s { border: 1px solid #d3dcdb; border-radius: 4px; padding: 2mm 2.5mm; background: #f4f7f6; }
   .flow span.a { color: #7e9098; }
@@ -45,16 +46,16 @@
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
   .arch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 3mm 0 5mm; font-size: 8.6pt; }
   .arch div { border: 1px solid #d3dcdb; border-radius: 6px; padding: 3mm; }
-  .arch div b { display: block; color: #0a6f8c; margin-bottom: 1mm; }
+  .arch div b { display: block; color: #3a7266; margin-bottom: 1mm; }
   .pass { color: #2c7a4b; font-weight: 600; }
   .fail { color: #b83227; font-weight: 600; }
   code, pre { font-family: "IBM Plex Mono", monospace; font-size: 8.5pt; }
   pre { background: #f0f4f3; border-radius: 4px; padding: 3mm; white-space: pre-wrap; margin: 2mm 0 4mm; }
-  .tag { display: inline-block; font-size: 7.5pt; font-weight: 600; padding: 0 5pt; border-radius: 8pt; background: #dcedf2; color: #0a6f8c; }
+  .tag { display: inline-block; font-size: 7.5pt; font-weight: 600; padding: 0 5pt; border-radius: 8pt; background: #e1efeb; color: #3a7266; }
 </style></head><body>
 
 <div class="cover">
-  <div class="brand">SPACE<span>AIR</span> CRM</div>
+  <div class="brand"><img src="../public/brand/spaceair-logo.png" alt="SPACEAIR – Feel the Difference" style="height:22mm;vertical-align:middle"> <span class="crm">CRM</span></div>
   <div>
     <h1>A CRM that runs on process, not on the Founder</h1>
     <p class="lede">Solution report for the SPACEAIR CRM: business analysis, what was built, how the automations reduce owner dependency, the technology used, and screenshots of the working application.</p>
@@ -70,10 +71,10 @@
   <h2><small>01 · EXECUTIVE SUMMARY</small>What we built</h2>
   <p>SPACEAIR has grown from 10 people in 2007 to roughly 200 across five locations and four MEP disciplines. Today, enquiries, quotations, AMC renewals and service complaints depend heavily on individuals, and many decisions and follow-ups still route through the Founder. This CRM replaces that with one shared system, a <b>delegation-of-authority matrix</b>, and an <b>automation engine</b> that does the chasing.</p>
   <div class="kpis">
-    <div class="kpi"><b>13</b><span>modules, from enquiry to AMC renewal</span></div>
-    <div class="kpi"><b>16</b><span>automation rules, each can be paused or tuned</span></div>
-    <div class="kpi"><b>7</b><span>roles with branch-scoped access</span></div>
-    <div class="kpi"><b>27/27</b><span>end-to-end workflow checks passing</span></div>
+    <div class="kpi"><b>16</b><span>modules, from enquiry and BOQ to AMC renewal</span></div>
+    <div class="kpi"><b>20</b><span>automation rules, each can be paused or tuned</span></div>
+    <div class="kpi"><b>9</b><span>roles with branch-scoped access</span></div>
+    <div class="kpi"><b>40/40</b><span>end-to-end workflow checks passing</span></div>
   </div>
   <h3>How it reduces owner dependency</h3>
   <ul>
@@ -81,12 +82,14 @@
     <li><b>Work is assigned automatically.</b> New enquiries go to the right engineer, service calls go to the least-loaded technician, a won PO goes to the Projects handover, and renewals go to the account owner.</li>
     <li><b>Follow-ups are chased by the system, not by phone.</b> Response deadlines, overdue follow-ups, stale deals, pending approvals and SLA breaches escalate one level at a time: the person, then the branch head, and the Founder only as a last resort.</li>
     <li><b>Recurring revenue is protected.</b> AMC renewal quotations go out automatically 60 days before expiry, and PPM visits are planned and tracked.</li>
+    <li><b>Estimation stops depending on one person.</b> Consultant BOQs are imported straight from Excel and priced from a rate library that learns from every quotation sent. The priced BOQ goes back in the client's own format, formulas intact.</li>
+    <li><b>Projects run on a defined workflow.</b> Award → engineering approvals → procurement → execution → QA/QC & commissioning → handover, with each team alerted when it's their turn and an AMC proposed at handover.</li>
     <li><b>Visibility comes from exceptions.</b> The Founder gets one daily digest listing only what needs them, plus live dashboards and reports with no Excel MIS.</li>
   </ul>
   <h3>What was delivered</h3>
   <ul>
     <li>A complete, working web application (Next.js 16 + TypeScript + SQLite) that runs locally with one command, with realistic sample data.</li>
-    <li>An automation engine with 16 rules, a 15-minute scheduler and a full audit log of every automated action and client message.</li>
+    <li>An automation engine with 20 rules, a 15-minute scheduler and a full audit log of every automated action and client message.</li>
     <li>A public website enquiry form and a REST API for integrations (website, WhatsApp relay, IndiaMART, tender alerts).</li>
     <li>Automated end-to-end tests, and this report generated from the running application.</li>
   </ul>
@@ -126,7 +129,9 @@
     <tr><td>Founder / MD</td><td>All branches, exceptions only</td><td>Dashboard, owner-only approvals, daily exception digest, reports</td></tr>
     <tr><td>Branch head</td><td>Own branch</td><td>Pipeline, mid-level approvals, escalations, branch digest</td></tr>
     <tr><td>Sales engineer</td><td>Own enquiries &amp; deals</td><td>Auto-assigned enquiries, reminders, BOQ quotes, self-approval up to limit</td></tr>
-    <tr><td>Estimation engineer</td><td>Pipeline &amp; quotations</td><td>BOQ templates by division, revision history</td></tr>
+    <tr><td>Estimation engineer</td><td>Pipeline, quotations, rate library</td><td>BOQ Excel import, auto-pricing, review task per tender, export in client format</td></tr>
+    <tr><td>Projects / planning</td><td>Projects</td><td>Six-phase delivery checklist, approval-stall reminders, handover</td></tr>
+    <tr><td>Procurement</td><td>Projects in procurement</td><td>Alerted automatically when engineering approvals are complete</td></tr>
     <tr><td>Service manager</td><td>Tickets, AMC, visits</td><td>Auto-dispatch, SLA ladder, PPM planner, chargeable-call alerts</td></tr>
     <tr><td>Technician</td><td>Own jobs (mobile)</td><td>Job list ordered by SLA, PPM visits, one-tap resolve</td></tr>
     <tr><td>Accounts</td><td>All branches</td><td>Advance-invoice tasks on every PO, AMC values</td></tr>
@@ -142,9 +147,11 @@
     <tr><td><b>Pipeline</b></td><td>Drag-and-drop kanban with MEP stages (Qualified → Site survey → BOQ &amp; design → Quotation sent → Negotiation → PO received / Lost). Lost deals require a reason.</td></tr>
     <tr><td><b>Opportunity</b></td><td>Stage tracker, value and weighted value, tonnage, next action and owner, quotations, tasks, contacts and full activity timeline.</td></tr>
     <tr><td><b>Clients</b></td><td>Client 360: contacts, opportunities, AMCs, service history, projects, lifetime value, and an "AMC upsell" flag.</td></tr>
+    <tr><td><b>Client BOQ import &amp; rate library</b></td><td>Upload the consultant's unpriced BOQ (.xlsx). Sections, floor-wise quantities, QRO lines, approved makes and header details (client, consultant, architect, doc ref) are read automatically. Lines are priced from the rate library or estimated from similar sizes. The priced file downloads in the client's own format.</td></tr>
     <tr><td><b>Quotations</b></td><td>BOQ line-item editor with live totals, discount and GST 18%. Revisions R0…Rn with history, approval routing preview, send to client, and a printable quotation.</td></tr>
     <tr><td><b>Approvals</b></td><td>Delegation matrix in action: pending approvals for the right person, decision history, and a "handled without Founder" metric.</td></tr>
-    <tr><td><b>Projects</b></td><td>Created automatically from won POs, with a sales → projects → accounts handover checklist, progress and tasks.</td></tr>
+    <tr><td><b>Projects</b></td><td>Created automatically from won POs, then run through six phases: client award, engineering &amp; approvals (submittals, material approvals, shop drawings), procurement, site execution, QA/QC &amp; commissioning, and handover.</td></tr>
+    <tr><td><b>Consultants &amp; references</b></td><td>Consultants and architects tracked as their own records and linked to every project they influence. Reference projects by sector for sales teams.</td></tr>
     <tr><td><b>AMC contracts</b></td><td>Register with expiry countdown, automatic renewal quotations, lapse detection, and a planned PPM visit schedule with technician assignment.</td></tr>
     <tr><td><b>Service tickets</b></td><td>P1/P2/P3 SLA clock, AMC coverage check, auto-dispatch, escalation ladder, resolution and client feedback.</td></tr>
     <tr><td><b>Tasks &amp; Inbox</b></td><td>Personal and team task lists (most auto-created) and a notification inbox routed by role and branch.</td></tr>
@@ -181,12 +188,50 @@
 </section>
 
 <section>
-  <h2><small>05 · AUTOMATIONS</small>The 16 rules</h2>
+  <h2><small>05 · AUTOMATIONS</small>The 20 rules</h2>
   <p>Each rule runs either on an event (for example, a new enquiry) or on the 15-minute schedule. Every action is idempotent, so running a rule twice never duplicates a task or a message, and every run is logged.</p>
   <table>
     <tr><th style="width:20%">Rule</th><th style="width:11%">Area</th><th style="width:21%">Trigger</th><th>What it does</th></tr>
-    <tr><td><b>Auto-assign new enquiries</b></td><td>Sales</td><td>When an enquiry is created (web form, WhatsApp, API or manual)</td><td>Matches the enquiry to an existing client (routes it to the account owner) or assigns the least-loaded sales engineer in the branch. Creates a first-response task with a deadline.</td></tr><tr><td><b>Instant acknowledgement to client</b></td><td>Sales</td><td>When an enquiry is created</td><td>Sends the client a WhatsApp (or email) within seconds with the enquiry reference and the name and number of the engineer handling it.</td></tr><tr><td><b>Enquiry response SLA</b></td><td>Sales</td><td>Every 15 minutes</td><td>If nobody responds within the deadline, the branch head is alerted. If it is still untouched after the re-assign window, it moves to the next available engineer automatically.</td></tr><tr><td><b>Follow-up reminders &amp; escalation</b></td><td>Sales</td><td>Every 15 minutes (once per day per deal)</td><td>Reminds the opportunity owner every day a next action is overdue, and alerts the branch head when it is overdue for longer than the limit.</td></tr><tr><td><b>Stale deal nudge</b></td><td>Sales</td><td>Every 15 minutes (once per week per deal)</td><td>Open opportunities with no activity logged for too long get a re-engagement task for the owner.</td></tr><tr><td><b>Discount approval matrix</b></td><td>Approvals</td><td>When a quotation is submitted</td><td>Discounts within the sales engineer's limit are auto-approved. Larger discounts go to the branch head. Only discounts above the branch limit, or very large deals, reach the Founder. Limits are set in Settings.</td></tr><tr><td><b>Approval reminders</b></td><td>Approvals</td><td>Every 15 minutes</td><td>Reminds approvers of pending approvals, and escalates a branch-head approval to the Founder only if it sits untouched past the escalation window.</td></tr><tr><td><b>Quotation follow-up cadence</b></td><td>Sales</td><td>When a quotation is sent, plus every 15 minutes</td><td>When a quotation is sent: emails it to the client contact, moves the deal to 'Quotation sent', and schedules follow-ups at +3 and +7 days. Sends the client a WhatsApp reminder after 7 days of silence, and warns the owner before validity expires.</td></tr><tr><td><b>Won deal → project handover</b></td><td>Projects</td><td>When an opportunity moves to 'PO received'</td><td>When a PO arrives: creates the project with a handover checklist, and gives the branch head a kick-off task and Accounts an advance-invoice task. Also sends the client a thank-you and schedules an AMC proposal before handover.</td></tr><tr><td><b>Lost deal review &amp; re-engagement</b></td><td>Sales</td><td>When an opportunity is marked Lost</td><td>Gives the branch head a review task with the lost reason, and schedules a 90-day check-in with the client so the relationship is not dropped.</td></tr><tr><td><b>Service ticket auto-dispatch</b></td><td>Service</td><td>When a service ticket is created</td><td>Applies the SLA for the priority and checks AMC coverage: uncovered calls are marked chargeable and the service manager is told. Assigns the least-loaded technician in the branch and WhatsApps the client the ticket number and technician's name.</td></tr><tr><td><b>SLA escalation ladder</b></td><td>Service</td><td>Every 15 minutes</td><td>At 75% of the SLA, alerts the technician and service manager. On breach, the branch head is alerted. Only a P1 breached for twice its SLA reaches the Founder.</td></tr><tr><td><b>Customer feedback after resolution</b></td><td>Service</td><td>When a ticket is resolved</td><td>Sends the client a one-tap WhatsApp rating as soon as a ticket is resolved.</td></tr><tr><td><b>AMC renewal autopilot</b></td><td>AMC</td><td>Every 15 minutes</td><td>Within the notice window, creates a renewal opportunity and quotation (with the standard uplift), emails it to the client and gives the owner a follow-up task. Reminds at 30 days and alerts the branch head at 7 days. Marks the AMC lapsed on expiry.</td></tr><tr><td><b>PPM visit planner</b></td><td>AMC</td><td>Every 15 minutes</td><td>Plans every preventive-maintenance visit for the contract year as soon as an AMC starts, assigns a technician, reminds them the day before, and flags missed visits to the service manager.</td></tr><tr><td><b>Exception-only daily digest</b></td><td>Management</td><td>Daily at the configured hour</td><td>Every morning the Founder gets one email listing only what needs them: pending owner approvals, P1 breaches, lapsed AMCs and big wins or losses. Each branch head gets a branch digest, so nobody has to chase updates by phone.</td></tr>
+    <tr><td><b>Auto-assign new enquiries</b></td><td>Sales</td><td>When an enquiry is created (web form, WhatsApp, API or manual)</td><td>Matches the enquiry to an existing client (routes it to the account owner) or assigns the least-loaded sales engineer in the branch. Creates a first-response task with a deadline.</td></tr><tr><td><b>Instant acknowledgement to client</b></td><td>Sales</td><td>When an enquiry is created</td><td>Sends the client a WhatsApp (or email) within seconds with the enquiry reference and the name and number of the engineer handling it.</td></tr><tr><td><b>Enquiry response SLA</b></td><td>Sales</td><td>Every 15 minutes</td><td>If nobody responds within the deadline, the branch head is alerted. If it is still untouched after the re-assign window, it moves to the next available engineer automatically.</td></tr><tr><td><b>Follow-up reminders &amp; escalation</b></td><td>Sales</td><td>Every 15 minutes (once per day per deal)</td><td>Reminds the opportunity owner every day a next action is overdue, and alerts the branch head when it is overdue for longer than the limit.</td></tr><tr><td><b>Stale deal nudge</b></td><td>Sales</td><td>Every 15 minutes (once per week per deal)</td><td>Open opportunities with no activity logged for too long get a re-engagement task for the owner.</td></tr><tr><td><b>Discount approval matrix</b></td><td>Approvals</td><td>When a quotation is submitted</td><td>Discounts within the sales engineer's limit are auto-approved. Larger discounts go to the branch head. Only discounts above the branch limit, or very large deals, reach the Founder. Limits are set in Settings.</td></tr><tr><td><b>Approval reminders</b></td><td>Approvals</td><td>Every 15 minutes</td><td>Reminds approvers of pending approvals, and escalates a branch-head approval to the Founder only if it sits untouched past the escalation window.</td></tr><tr><td><b>Quotation follow-up cadence</b></td><td>Sales</td><td>When a quotation is sent, plus every 15 minutes</td><td>When a quotation is sent: emails it to the client contact, moves the deal to 'Quotation sent', and schedules follow-ups at +3 and +7 days. Sends the client a WhatsApp reminder after 7 days of silence, and warns the owner before validity expires.</td></tr><tr><td><b>Won deal → project handover</b></td><td>Projects</td><td>When an opportunity moves to 'PO received'</td><td>When a PO arrives: creates the project with a handover checklist, and gives the branch head a kick-off task and Accounts an advance-invoice task. Also sends the client a thank-you and schedules an AMC proposal before handover.</td></tr><tr><td><b>Lost deal review &amp; re-engagement</b></td><td>Sales</td><td>When an opportunity is marked Lost</td><td>Gives the branch head a review task with the lost reason, and schedules a 90-day check-in with the client so the relationship is not dropped.</td></tr><tr><td><b>Service ticket auto-dispatch</b></td><td>Service</td><td>When a service ticket is created</td><td>Applies the SLA for the priority and checks AMC coverage: uncovered calls are marked chargeable and the service manager is told. Assigns the least-loaded technician in the branch and WhatsApps the client the ticket number and technician's name.</td></tr><tr><td><b>SLA escalation ladder</b></td><td>Service</td><td>Every 15 minutes</td><td>At 75% of the SLA, alerts the technician and service manager. On breach, the branch head is alerted. Only a P1 breached for twice its SLA reaches the Founder.</td></tr><tr><td><b>Customer feedback after resolution</b></td><td>Service</td><td>When a ticket is resolved</td><td>Sends the client a one-tap WhatsApp rating as soon as a ticket is resolved.</td></tr><tr><td><b>AMC renewal autopilot</b></td><td>AMC</td><td>Every 15 minutes</td><td>Within the notice window, creates a renewal opportunity and quotation (with the standard uplift), emails it to the client and gives the owner a follow-up task. Reminds at 30 days and alerts the branch head at 7 days. Marks the AMC lapsed on expiry.</td></tr><tr><td><b>PPM visit planner</b></td><td>AMC</td><td>Every 15 minutes</td><td>Plans every preventive-maintenance visit for the contract year as soon as an AMC starts, assigns a technician, reminds them the day before, and flags missed visits to the service manager.</td></tr><tr><td><b>BOQ auto-pricing from the rate library</b></td><td>Estimation</td><td>When a BOQ Excel is imported</td><td>When a client or consultant BOQ is imported, every line is priced from the company rate library (exact match) or estimated from similar sizes in the same section (e.g. fans by CFM, trays by width). The estimator gets one review task listing what still needs a rate.</td></tr><tr><td><b>Rate library learns from every quotation</b></td><td>Estimation</td><td>When a quotation is sent</td><td>When a quotation is sent to a client, its supply and installation rates are saved to the rate library. The next BOQ with the same items prices itself, so pricing knowledge stays with the company instead of one person.</td></tr><tr><td><b>Tender / BOQ submission deadline</b></td><td>Estimation</td><td>Every 15 minutes</td><td>Tracks the client's submission date on imported BOQs. Alerts the estimator and deal owner 48 h before, the branch head 24 h before, and flags missed submissions.</td></tr><tr><td><b>Project phase gates &amp; handover</b></td><td>Projects</td><td>When a project checklist changes, plus every 15 minutes</td><td>Moves each project through Client award → Engineering &amp; approvals → Procurement → Site execution → QA/QC &amp; commissioning → Handover as checklist items are completed, and hands work to the next team (e.g. Procurement). Reminds the PM when consultant approvals stall. On handover it creates an AMC opportunity, so the relationship continues into service.</td></tr><tr><td><b>Exception-only daily digest</b></td><td>Management</td><td>Daily at the configured hour</td><td>Every morning the Founder gets one email listing only what needs them: pending owner approvals, P1 breaches, lapsed AMCs and big wins or losses. Each branch head gets a branch digest, so nobody has to chase updates by phone.</td></tr>
   </table>
+</section>
+
+<section>
+  <h2><small>05a · ESTIMATION</small>Building the BOQ quotation, without the spreadsheet marathon</h2>
+  <p>Estimation is the step the team finds hardest to put into software. A consultant sends an unpriced BOQ in Excel with hundreds of lines, floor-wise quantities, "QRO" rate-only items and an approved-makes list. Someone senior prices it line by line from memory and old files, then pastes the rates back into the consultant's format. The CRM turns this into a guided, repeatable flow:</p>
+  <div class="flow">
+    <span class="s">Upload consultant BOQ (.xlsx)</span><span class="a">→</span><span class="s">Read sections, floors, QRO, makes, header</span><span class="a">→</span><span class="s">Price from rate library</span><span class="a">→</span><span class="s">Estimate similar sizes</span><span class="a">→</span><span class="s">Estimator reviews flagged lines</span><span class="a">→</span><span class="s">Approval matrix</span><span class="a">→</span><span class="s">Export in client's own file</span><span class="a">→</span><span class="s">Rates learned for next time</span>
+  </div>
+  <div class="two">
+    <div class="box accent-b"><h3 style="margin-top:0">What is automatic</h3><ul>
+      <li>Client, consultant, architect, doc ref and revision are picked up from the BOQ header, and the opportunity and contacts are created.</li>
+      <li>Every line keeps its item number, section, floor quantities and QRO flag.</li>
+      <li>Exact matches are priced from the rate library, with supply and installation kept separate.</li>
+      <li>Missing sizes are estimated from the nearest sizes in the same section (e.g. a 6200 CFM fan from the 5250 and 8950 CFM rates) and tagged "estimated" for review.</li>
+      <li>One review task for the estimator, plus submission-deadline alerts.</li>
+      <li>Export writes rates and selected makes into the consultant's own workbook. Formulas, sheets and images stay as they were, and Excel recalculates on open.</li>
+    </ul></div>
+    <div class="box"><h3 style="margin-top:0">Why this reduces dependency</h3><ul>
+      <li>Pricing knowledge moves from one person's memory into a company rate library that grows with every quotation sent.</li>
+      <li>A junior estimator can price a 200-line BOQ by reviewing flagged lines instead of starting from zero.</li>
+      <li>Discounts still follow the delegation matrix, so control is kept without every quote going to the Founder.</li>
+      <li>Built for the standard consultant layout: summary sheet, item-wise BOQ with floor quantities and QRO lines, approved makes and datasheet annexures. Export keeps every sheet, image and formula.</li>
+    </ul></div>
+  </div>
+  <p class="muted">Rates shown in screenshots are sample rates. In production the library is seeded from SPACEAIR's own past priced BOQs.</p>
+</section>
+
+<section>
+  <h2><small>05b · POSITIONING</small>CRM, ERP, or both?</h2>
+  <p>This system is a <b>CRM with estimation, project-delivery and service operations</b>, not an ERP. An ERP (SAP Business One-based products, Tally, Zoho Books) is the system of record for accounting, GST invoicing, inventory, purchasing and payroll. This CRM covers what happens before and around those transactions: enquiries, consultant BOQs, pricing, approvals, project workflow, AMC and service. That is where SPACEAIR's owner-dependency sits.</p>
+  <table>
+    <tr><th style="width:26%">Need</th><th>Where it belongs</th></tr>
+    <tr><td>Enquiries, pipeline, follow-ups, client history</td><td>CRM (this system)</td></tr>
+    <tr><td>Consultant BOQ import, pricing, revisions, approval matrix</td><td>CRM (this system); typically the weakest area in ERPs</td></tr>
+    <tr><td>Project phases, submittal approvals, handover, AMC, SLA service</td><td>CRM (this system)</td></tr>
+    <tr><td>Accounting, GST invoices, stock, vendor POs, payroll</td><td>ERP, connected to the CRM so won orders and AMC invoices flow across</td></tr>
+  </table>
+  <p>Recommendation: keep or choose an ERP for finance and inventory, and integrate it with this CRM through its API rather than forcing sales and estimation workflows into the ERP.</p>
 </section>
 
 <section>
@@ -262,6 +307,44 @@
   <figure class="shot">
     <figcaption><b>The Bangalore branch head's view</b><span>A 6% discount lands with the branch head, not the Founder.</span></figcaption>
     <img src="screenshots/26-approvals-branch-head.png" alt="The Bangalore branch head's view">
+  </figure>
+</section>
+<section>
+  
+  <figure class="shot">
+    <figcaption><b>Import a client BOQ</b><span>Upload the consultant's unpriced Excel exactly as received.</span></figcaption>
+    <img src="screenshots/29-boq-import.png" alt="Import a client BOQ">
+  </figure>
+  
+  <figure class="shot">
+    <figcaption><b>Rate library</b><span>The company price book, learned from every quotation sent.</span></figcaption>
+    <img src="screenshots/31-rate-library.png" alt="Rate library">
+  </figure>
+</section>
+<section>
+  
+  <figure class="shot tall">
+    <figcaption><b>Auto-priced BOQ, ready for review</b><span>Sections, floor quantities, QRO lines and approved makes read from the file. Rates are tagged library or estimated, and lines needing a rate are highlighted. Supply and installation totals are shown separately.</span></figcaption>
+    <img src="screenshots/30-boq-autopriced.png" alt="Auto-priced BOQ, ready for review">
+  </figure>
+</section>
+<section>
+  
+  <figure class="shot tall">
+    <figcaption><b>Project delivery workflow</b><span>Six phases, each owned by a team. Completing a phase moves the project on and alerts the next team; handover creates an AMC opportunity.</span></figcaption>
+    <img src="screenshots/32-project-phases.png" alt="Project delivery workflow">
+  </figure>
+</section>
+<section>
+  
+  <figure class="shot">
+    <figcaption><b>Consultants & architects</b><span>The people who specify makes and float tenders, with the pipeline they influence.</span></figcaption>
+    <img src="screenshots/33-consultants.png" alt="Consultants &amp; architects">
+  </figure>
+  
+  <figure class="shot">
+    <figcaption><b>Reference projects</b><span>Completed projects by sector, ready for any sales conversation.</span></figcaption>
+    <img src="screenshots/34-references.png" alt="Reference projects">
   </figure>
 </section>
 <section>
@@ -373,7 +456,7 @@
   <h2><small>07 · TECHNOLOGY</small>Technologies used</h2>
   <table>
     <tr><th style="width:15%">Layer</th><th style="width:20%">Technology</th><th style="width:11%">Version</th><th>Role in the CRM</th></tr>
-    <tr><td>Framework</td><td><b>Next.js</b></td><td class="mono">16.3.6</td><td>App Router, React Server Components, Server Actions, Turbopack builds, instrumentation hook for the scheduler</td></tr><tr><td>UI library</td><td><b>React</b></td><td class="mono">19.2.8</td><td>Server + client components; useOptimistic for instant drag-and-drop on the pipeline</td></tr><tr><td>Language</td><td><b>TypeScript</b></td><td class="mono">5.9.3</td><td>Strict mode end to end: schema, queries, actions and UI share types</td></tr><tr><td>Styling</td><td><b>Tailwind CSS</b></td><td class="mono">4.3.3</td><td>v4 CSS-first theme tokens; light and dark themes; responsive down to phone width</td></tr><tr><td>Database</td><td><b>SQLite via libSQL</b></td><td class="mono">0.18.0</td><td>Zero-setup local file database; the same driver connects to Turso (hosted libSQL) in production</td></tr><tr><td>ORM</td><td><b>Drizzle ORM + Drizzle Kit</b></td><td class="mono">0.45.3 / 0.31.11</td><td>Type-safe schema and queries; `drizzle-kit push` creates tables; portable to PostgreSQL</td></tr><tr><td>Validation</td><td><b>Zod</b></td><td class="mono">4.6.5</td><td>Validates every form, the quotation editor payload and the public enquiry API</td></tr><tr><td>Auth / sessions</td><td><b>jose (JWT)</b></td><td class="mono">6.2.12</td><td>Signed, HTTP-only session cookie; role- and branch-scoped access. Swap-in point for Microsoft 365 / Google SSO</td></tr><tr><td>Scheduler</td><td><b>node-cron</b></td><td class="mono">4.6.0</td><td>Runs time-based automation rules every 15 minutes inside the Next.js server</td></tr><tr><td>Charts</td><td><b>Recharts</b></td><td class="mono">3.10.1</td><td>Interactive report charts with tooltips, themed from the same design tokens</td></tr><tr><td>Icons</td><td><b>Lucide</b></td><td class="mono">1.48.0</td><td>Consistent open-source icon set</td></tr><tr><td>Fonts</td><td><b>Archivo, IBM Plex Sans / Mono</b></td><td class="mono">Google Fonts</td><td>Loaded and self-hosted through next/font</td></tr><tr><td>Testing & capture</td><td><b>Playwright</b></td><td class="mono">1.63.0</td><td>End-to-end workflow tests, screenshots and this PDF, driving the installed Chrome</td></tr><tr><td>Tooling</td><td><b>tsx, ESLint</b></td><td class="mono">4.23.15</td><td>Runs seed / test / report scripts in TypeScript; linting</td></tr>
+    <tr><td>Framework</td><td><b>Next.js</b></td><td class="mono">16.3.6</td><td>App Router, React Server Components, Server Actions, Turbopack builds, instrumentation hook for the scheduler</td></tr><tr><td>UI library</td><td><b>React</b></td><td class="mono">19.2.8</td><td>Server + client components; useOptimistic for instant drag-and-drop on the pipeline</td></tr><tr><td>Language</td><td><b>TypeScript</b></td><td class="mono">5.9.3</td><td>Strict mode end to end: schema, queries, actions and UI share types</td></tr><tr><td>Styling</td><td><b>Tailwind CSS</b></td><td class="mono">4.3.3</td><td>v4 CSS-first theme tokens; light and dark themes; responsive down to phone width</td></tr><tr><td>Database</td><td><b>SQLite via libSQL</b></td><td class="mono">0.18.0</td><td>Zero-setup local file database; the same driver connects to Turso (hosted libSQL) in production</td></tr><tr><td>ORM</td><td><b>Drizzle ORM + Drizzle Kit</b></td><td class="mono">0.45.3 / 0.31.11</td><td>Type-safe schema and queries; `drizzle-kit push` creates tables; portable to PostgreSQL</td></tr><tr><td>Validation</td><td><b>Zod</b></td><td class="mono">4.6.5</td><td>Validates every form, the quotation editor payload and the public enquiry API</td></tr><tr><td>Auth / sessions</td><td><b>jose (JWT)</b></td><td class="mono">6.2.12</td><td>Signed, HTTP-only session cookie; role- and branch-scoped access. Swap-in point for Microsoft 365 / Google SSO</td></tr><tr><td>Scheduler</td><td><b>node-cron</b></td><td class="mono">4.6.0</td><td>Runs time-based automation rules every 15 minutes inside the Next.js server</td></tr><tr><td>Charts</td><td><b>Recharts</b></td><td class="mono">3.10.1</td><td>Interactive report charts with tooltips, themed from the same design tokens</td></tr><tr><td>Icons</td><td><b>Lucide</b></td><td class="mono">1.48.0</td><td>Consistent open-source icon set</td></tr><tr><td>Fonts</td><td><b>Archivo, IBM Plex Sans / Mono</b></td><td class="mono">Google Fonts</td><td>Loaded and self-hosted through next/font</td></tr><tr><td>Testing & capture</td><td><b>Playwright</b></td><td class="mono">1.63.0</td><td>End-to-end workflow tests, screenshots and this PDF, driving the installed Chrome</td></tr><tr><td>Excel engine</td><td><b>ExcelJS</b></td><td class="mono">4.4.0</td><td>Reads consultant BOQ workbooks and writes rates back into the client's own file, keeping formulas, images and sheets</td></tr><tr><td>Tooling</td><td><b>tsx, ESLint</b></td><td class="mono">4.23.15</td><td>Runs seed / test / report scripts in TypeScript; linting</td></tr>
     <tr><td>Runtime</td><td><b>Node.js</b></td><td class="mono">20.20.0</td><td>Server runtime (Next.js 16 requires 20.9+)</td></tr>
   </table>
   <h3>Architecture</h3>
@@ -381,7 +464,7 @@
     <div><b>Presentation</b>React Server Components render pages on the server with data already loaded. Small client components handle the kanban, BOQ editor, charts and forms.</div>
     <div><b>Application</b>Server Actions for every mutation (validated with Zod). Each action emits a domain event, such as <code>enquiry.created</code> or <code>opportunity.won</code>, to the automation engine.</div>
     <div><b>Automation engine</b>A rule registry with event and scheduled handlers. All side effects (tasks, alerts, messages) go through one context with de-duplication keys and a run log.</div>
-    <div><b>Data</b>Drizzle ORM over libSQL/SQLite: 19 tables covering users, clients, contacts, enquiries, opportunities, activities, tasks, quotations, BOQ items, approvals, projects, AMCs, PPM visits, tickets, notifications, outbox, rules, runs and settings.</div>
+    <div><b>Data</b>Drizzle ORM over libSQL/SQLite: 21 tables, including a learned rate library and reference projects, covering users, clients, contacts, enquiries, opportunities, activities, tasks, quotations, BOQ items, approvals, projects, AMCs, PPM visits, tickets, notifications, outbox, rules, runs and settings.</div>
     <div><b>Security</b>Signed JWT session cookie (HTTP-only), role- and branch-scoped queries, owner-only settings, and an API key on the integration endpoint.</div>
     <div><b>Integrations</b>Public web form, REST enquiry API, and a WhatsApp/email outbox ready for the WhatsApp Business Cloud API and an email service.</div>
   </div>
@@ -400,13 +483,15 @@
   <p>The production build compiles with strict TypeScript and no errors. An automated Playwright test drives the real UI through the core workflows and checks the database after each step:</p>
   <table>
     <tr><th style="width:12%">Result</th><th>Check</th></tr>
-    <tr><td class="pass">PASS</td><td>5% discount quotation goes to pending approval</td></tr><tr><td class="pass">PASS</td><td>…routed to the branch head, not the Founder</td></tr><tr><td class="pass">PASS</td><td>Branch head approval marks quotation approved</td></tr><tr><td class="pass">PASS</td><td>Quotation emailed to client</td></tr><tr><td class="pass">PASS</td><td>Two follow-up tasks scheduled</td></tr><tr><td class="pass">PASS</td><td>Deal moved to Quotation sent</td></tr><tr><td class="pass">PASS</td><td>Won deal created a project</td></tr><tr><td class="pass">PASS</td><td>Advance-invoice task for Accounts</td></tr><tr><td class="pass">PASS</td><td>New ticket auto-assigned to a technician</td></tr><tr><td class="pass">PASS</td><td>No AMC → marked chargeable</td></tr><tr><td class="pass">PASS</td><td>Feedback WhatsApp sent on resolution</td></tr><tr><td class="pass">PASS</td><td>Enquiry converted to opportunity</td></tr><tr><td class="pass">PASS</td><td>GET /dashboard → 200</td></tr><tr><td class="pass">PASS</td><td>GET /enquiries → 200</td></tr><tr><td class="pass">PASS</td><td>GET /pipeline → 200</td></tr><tr><td class="pass">PASS</td><td>GET /clients → 200</td></tr><tr><td class="pass">PASS</td><td>GET /quotations → 200</td></tr><tr><td class="pass">PASS</td><td>GET /approvals → 200</td></tr><tr><td class="pass">PASS</td><td>GET /projects → 200</td></tr><tr><td class="pass">PASS</td><td>GET /amc → 200</td></tr><tr><td class="pass">PASS</td><td>GET /service → 200</td></tr><tr><td class="pass">PASS</td><td>GET /tasks → 200</td></tr><tr><td class="pass">PASS</td><td>GET /reports → 200</td></tr><tr><td class="pass">PASS</td><td>GET /automations → 200</td></tr><tr><td class="pass">PASS</td><td>GET /automations/messages → 200</td></tr><tr><td class="pass">PASS</td><td>GET /settings → 200</td></tr><tr><td class="pass">PASS</td><td>GET /notifications → 200</td></tr>
+    <tr><td class="pass">PASS</td><td>5% discount quotation goes to pending approval</td></tr><tr><td class="pass">PASS</td><td>…routed to the branch head, not the Founder</td></tr><tr><td class="pass">PASS</td><td>Branch head approval marks quotation approved</td></tr><tr><td class="pass">PASS</td><td>Quotation emailed to client</td></tr><tr><td class="pass">PASS</td><td>Two follow-up tasks scheduled</td></tr><tr><td class="pass">PASS</td><td>Deal moved to Quotation sent</td></tr><tr><td class="pass">PASS</td><td>Won deal created a project</td></tr><tr><td class="pass">PASS</td><td>Advance-invoice task for Accounts</td></tr><tr><td class="pass">PASS</td><td>New ticket auto-assigned to a technician</td></tr><tr><td class="pass">PASS</td><td>No AMC → marked chargeable</td></tr><tr><td class="pass">PASS</td><td>Feedback WhatsApp sent on resolution</td></tr><tr><td class="pass">PASS</td><td>Enquiry converted to opportunity</td></tr><tr><td class="pass">PASS</td><td>BOQ imported: 17 lines, 3 QRO</td></tr><tr><td class="pass">PASS</td><td>Auto-priced: 13 from library, 3 estimated</td></tr><tr><td class="pass">PASS</td><td>Consultant and architect linked from the BOQ header</td></tr><tr><td class="pass">PASS</td><td>Estimator review task created</td></tr><tr><td class="pass">PASS</td><td>Priced BOQ downloads as .xlsx</td></tr><tr><td class="pass">PASS</td><td>Rates written into the client's workbook, formulas kept</td></tr><tr><td class="pass">PASS</td><td>Sending the quote grows the rate library</td></tr><tr><td class="pass">PASS</td><td>Engineering done → project moves to Procurement</td></tr><tr><td class="pass">PASS</td><td>Procurement team notified</td></tr><tr><td class="pass">PASS</td><td>GET /dashboard → 200</td></tr><tr><td class="pass">PASS</td><td>GET /enquiries → 200</td></tr><tr><td class="pass">PASS</td><td>GET /pipeline → 200</td></tr><tr><td class="pass">PASS</td><td>GET /clients → 200</td></tr><tr><td class="pass">PASS</td><td>GET /clients?tab=Consultants → 200</td></tr><tr><td class="pass">PASS</td><td>GET /quotations → 200</td></tr><tr><td class="pass">PASS</td><td>GET /quotations/import → 200</td></tr><tr><td class="pass">PASS</td><td>GET /quotations/rates → 200</td></tr><tr><td class="pass">PASS</td><td>GET /references → 200</td></tr><tr><td class="pass">PASS</td><td>GET /approvals → 200</td></tr><tr><td class="pass">PASS</td><td>GET /projects → 200</td></tr><tr><td class="pass">PASS</td><td>GET /amc → 200</td></tr><tr><td class="pass">PASS</td><td>GET /service → 200</td></tr><tr><td class="pass">PASS</td><td>GET /tasks → 200</td></tr><tr><td class="pass">PASS</td><td>GET /reports → 200</td></tr><tr><td class="pass">PASS</td><td>GET /automations → 200</td></tr><tr><td class="pass">PASS</td><td>GET /automations/messages → 200</td></tr><tr><td class="pass">PASS</td><td>GET /settings → 200</td></tr><tr><td class="pass">PASS</td><td>GET /notifications → 200</td></tr>
   </table>
-  <p><b>27 of 27 checks passed.</b> The workflows covered are: discount routing to the branch head, branch-head approval, sending the quotation with its auto-email and follow-ups, PO → project and invoice task, service ticket auto-dispatch with the chargeable flag, feedback on resolution, enquiry conversion, and every main page loading.</p>
+  <p><b>40 of 40 checks passed.</b> The workflows covered are: discount routing to the branch head, branch-head approval, sending the quotation with its auto-email and follow-ups, PO → project and invoice task, service ticket auto-dispatch with the chargeable flag, feedback on resolution, enquiry conversion, and every main page loading.</p>
   <h3>Known limitations of this build</h3>
   <ul>
     <li>WhatsApp and email messages are recorded in the outbox, not delivered; delivery needs the provider accounts listed above.</li>
     <li>Sign-in is a role picker for demonstration; SSO is a production task.</li>
+    <li>The rate library holds sample rates. It needs seeding from SPACEAIR's own priced BOQs before real use.</li>
+    <li>The BOQ reader handles the standard consultant layout (S.No / description / unit / floor quantities / total / supply rate / installation rate). Unusual layouts may need a column-mapping step.</li>
     <li>Sample data only. Client names come from SPACEAIR's public client list and do not represent real transactions.</li>
   </ul>
 </section>
@@ -425,6 +510,8 @@ npm start            # open http://localhost:3000</pre>
     <li>Open <code>/enquire</code> in a second tab, submit an enquiry, then open it in <b>Enquiries</b>: it is auto-assigned and the WhatsApp is logged.</li>
     <li><b>Pipeline</b>: drag a deal to <i>PO received</i>, then open <b>Projects</b> to see the handover checklist and tasks.</li>
     <li><b>Quotations</b> → Q-26-187: change a quantity and the discount, and watch the approval route change.</li>
+    <li><b>Import client BOQ</b>: upload <code>public/samples/Sample-Unpriced-BOQ-HVAC.xlsx</code> and see it priced in seconds; download the priced file in the same format.</li>
+    <li><b>Projects</b> → P-2603: tick the remaining approvals and watch it move to Procurement.</li>
     <li>Sign in as <b>Karthik (sales)</b>, draft a quote at 5% and submit it. Sign in as <b>Ramesh (branch head)</b> and approve it. The Founder is never involved.</li>
     <li><b>AMC contracts</b>: renewal quotes already sent, and a lapsed contract flagged.</li>
     <li><b>Service</b>: SLA ladder and chargeable calls. Sign in as <b>Manoj (technician)</b> on a phone-sized window.</li>

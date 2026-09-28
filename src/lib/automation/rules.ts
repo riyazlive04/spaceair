@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull, lt, desc } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { OPEN_STAGES, stageLabel } from "@/lib/constants";
+import { OPEN_STAGES, stageLabel, PROJECT_PHASES, phaseLabel, projectChecklist } from "@/lib/constants";
+import { priceLine, rateKey } from "@/lib/boq";
 import { DAY, HOUR, money, quoteTotals, fmtDate } from "@/lib/format";
 import {
   Ctx,
@@ -24,14 +25,16 @@ export type EventName =
   | "opportunity.won"
   | "opportunity.lost"
   | "ticket.created"
-  | "ticket.resolved";
+  | "ticket.resolved"
+  | "quotation.imported"
+  | "project.updated";
 type Payload = { id: string; userId?: string | null };
 
 export type Rule = {
   key: string;
   name: string;
   description: string;
-  category: "Sales" | "Approvals" | "Projects" | "AMC" | "Service" | "Management";
+  category: "Sales" | "Estimation" | "Approvals" | "Projects" | "AMC" | "Service" | "Management";
   trigger: string;
   defaults: Cfg;
   configLabels?: Record<string, string>;
@@ -427,15 +430,8 @@ export const RULES: Rule[] = [
             branch: o.branch,
             value: o.value,
             pmId: bh?.id,
-            checklist: [
-              "PO / LOI copy filed",
-              "Approved drawings & final BOQ handed to Projects",
-              "Kick-off meeting with client & PMC",
-              "Advance invoice raised",
-              "Material indent & vendor POs",
-              "Site mobilisation, permits & safety induction",
-              "Execution schedule shared with client",
-            ].map((item, i) => ({ item, done: i === 0 })),
+            phase: "award",
+            checklist: projectChecklist().map((c, i) => (i === 0 ? { ...c, done: true, doneAt: ctx.now.toISOString() } : c)),
           });
           await ctx.task({ title: `Kick-off meeting: ${name} – ${o.title}`, assignedTo: bh?.id, dueAt: new Date(ctx.now.getTime() + 2 * DAY), entityType: "project", entityId: pid, priority: "high", dedupe: `won-kick-${id}` });
           const acc = (await usersBy("accounts"))[0];
@@ -650,6 +646,173 @@ export const RULES: Rule[] = [
           await ctx.notify(sm?.id, `Missed PPM visit: ${await acctName(a.accountId)}`, { body: `${a.code} visit due ${fmtDate(v.scheduledFor)}`, link: `/amc/${a.id}`, severity: "warn", dedupe: `ppm-miss-${v.id}` });
           ctx.note(`Missed visit flagged for ${a.code}`);
         }
+      }
+    },
+  },
+
+  /* ───────────── ESTIMATION ───────────── */
+  {
+    key: "boq_autoprice",
+    name: "BOQ auto-pricing from the rate library",
+    description:
+      "When a client or consultant BOQ is imported, every line is priced from the company rate library (exact match) or estimated from similar sizes in the same section (e.g. fans by CFM, trays by width). The estimator gets one review task listing what still needs a rate.",
+    category: "Estimation",
+    trigger: "When a BOQ Excel is imported",
+    defaults: { reviewDays: 2 },
+    configLabels: { reviewDays: "Estimator review deadline (days)" },
+    onEvent: {
+      "quotation.imported": async (ctx, cfg, { id }) => {
+        const q = await db.query.quotations.findFirst({ where: eq(S.quotations.id, id) });
+        if (!q) return;
+        const lib = await db.select().from(S.rateItems);
+        const items = await db.select().from(S.quoteItems).where(eq(S.quoteItems.quotationId, id));
+        let exact = 0, est = 0, none = 0;
+        for (const it of items) {
+          if ((it.supplyRate ?? 0) + (it.installRate ?? 0) > 0) continue;
+          const p = priceLine(it, lib);
+          if (!p) {
+            none++;
+            continue;
+          }
+          if (p.source === "library") exact++;
+          else est++;
+          await db
+            .update(S.quoteItems)
+            .set({ supplyRate: p.supplyRate, installRate: p.installRate, rate: p.supplyRate + p.installRate, rateSource: p.source })
+            .where(eq(S.quoteItems.id, it.id));
+        }
+        const fresh = await db.select().from(S.quoteItems).where(eq(S.quoteItems.quotationId, id));
+        const t = quoteTotals(fresh.filter((i) => !i.qro), q.discountPct, q.gstPct);
+        const o = await db.query.opportunities.findFirst({ where: eq(S.opportunities.id, q.opportunityId) });
+        if (o) await db.update(S.opportunities).set({ value: t.net, lastActivityAt: ctx.now }).where(eq(S.opportunities.id, o.id));
+        const estimator = (await usersBy("estimator", o?.branch)).concat(await usersBy("estimator"))[0] ?? (await branchHead(o?.branch ?? "Chennai"));
+        const soon = q.dueAt && q.dueAt.getTime() - ctx.now.getTime() < cfg.reviewDays * DAY;
+        const due = soon ? new Date(q.dueAt!.getTime() - 12 * HOUR) : new Date(ctx.now.getTime() + cfg.reviewDays * DAY);
+        await ctx.task({ title: `Review BOQ ${q.code}: ${exact} priced from library, ${est} estimated, ${none} need rates`, assignedTo: estimator?.id, dueAt: due, entityType: "quotation", entityId: id, priority: "high", dedupe: `boq-review-${id}` });
+        await ctx.notify(estimator?.id, `BOQ imported: ${q.code} (${items.length} lines)`, { body: `${exact} auto-priced · ${est} estimated · ${none} to price · value so far ${money(t.net)}`, link: `/quotations/${id}`, dedupe: `boq-imp-${id}` });
+        await ctx.activity("opportunity", q.opportunityId, `BOQ ${q.fileName ?? q.code} imported: ${items.length} lines, ${exact} priced from rate library, ${est} estimated, ${none} unpriced`);
+        ctx.actions += exact + est;
+        ctx.note(`${q.code}: ${exact} library · ${est} estimated · ${none} unpriced of ${items.length}`);
+      },
+    },
+  },
+  {
+    key: "rate_library_learn",
+    name: "Rate library learns from every quotation",
+    description:
+      "When a quotation is sent to a client, its supply and installation rates are saved to the rate library. The next BOQ with the same items prices itself, so pricing knowledge stays with the company instead of one person.",
+    category: "Estimation",
+    trigger: "When a quotation is sent",
+    defaults: {},
+    onEvent: {
+      "quotation.sent": async (ctx, _cfg, { id }) => {
+        const q = await db.query.quotations.findFirst({ where: eq(S.quotations.id, id) });
+        if (!q || q.kind === "amc_renewal") return;
+        const items = await db.select().from(S.quoteItems).where(eq(S.quoteItems.quotationId, id));
+        let n = 0;
+        for (const it of items) {
+          const supply = it.supplyRate ?? it.rate, install = it.installRate ?? 0;
+          if (supply + install <= 0) continue;
+          const key = rateKey(it.section, it.description, it.unit);
+          const src = `${q.code} R${q.revision}`;
+          await db
+            .insert(S.rateItems)
+            .values({ id: uid(), key, section: it.section, description: it.description.slice(0, 400), unit: it.unit, supplyRate: supply, installRate: install, source: src })
+            .onConflictDoUpdate({ target: S.rateItems.key, set: { supplyRate: supply, installRate: install, source: src, uses: sql`${S.rateItems.uses} + 1`, updatedAt: ctx.now } });
+          n++;
+        }
+        if (n) {
+          ctx.actions += 1;
+          ctx.note(`${q.code} R${q.revision}: ${n} rates saved to library`);
+        }
+      },
+    },
+  },
+  {
+    key: "tender_deadline",
+    name: "Tender / BOQ submission deadline",
+    description: "Tracks the client's submission date on imported BOQs. Alerts the estimator and deal owner 48 h before, the branch head 24 h before, and flags missed submissions.",
+    category: "Estimation",
+    trigger: "Every 15 minutes",
+    defaults: { warnHours: 48, escalateHours: 24 },
+    configLabels: { warnHours: "Warn estimator (hours before)", escalateHours: "Alert branch head (hours before)" },
+    onSchedule: async (ctx, cfg) => {
+      const list = await db.select().from(S.quotations).where(inArray(S.quotations.status, ["draft", "pending_approval", "approved"]));
+      for (const q of list) {
+        if (!q.dueAt) continue;
+        const h = (q.dueAt.getTime() - ctx.now.getTime()) / HOUR;
+        const o = await db.query.opportunities.findFirst({ where: eq(S.opportunities.id, q.opportunityId) });
+        if (!o) continue;
+        const name = await acctName(o.accountId);
+        if (h <= cfg.warnHours && h > 0) {
+          const est = (await usersBy("estimator", o.branch)).concat(await usersBy("estimator"))[0];
+          for (const u of [est?.id, o.ownerId])
+            await ctx.notify(u, `${q.code} due in ${Math.round(h)} h: ${name}`, { body: `Status: ${q.status.replace("_", " ")}`, link: `/quotations/${q.id}`, severity: "warn", dedupe: `tdl-warn-${q.id}` });
+        }
+        if (h <= cfg.escalateHours && h > 0)
+          if (await ctx.notify((await branchHead(o.branch))?.id, `Submission due in ${Math.round(h)} h: ${q.code}`, { body: `${name} · still ${q.status.replace("_", " ")}`, link: `/quotations/${q.id}`, severity: "crit", dedupe: `tdl-esc-${q.id}` }))
+            ctx.note(`${q.code} deadline escalated`);
+        if (h <= 0)
+          if (await ctx.notify((await branchHead(o.branch))?.id, `Missed submission: ${q.code}`, { body: `${name}: was due ${fmtDate(q.dueAt)}`, link: `/quotations/${q.id}`, severity: "crit", dedupe: `tdl-miss-${q.id}` }))
+            ctx.note(`${q.code} submission missed`);
+      }
+    },
+  },
+
+  /* ───────────── PROJECT DELIVERY ───────────── */
+  {
+    key: "project_phase_gate",
+    name: "Project phase gates & handover",
+    description:
+      "Moves each project through Client award → Engineering & approvals → Procurement → Site execution → QA/QC & commissioning → Handover as checklist items are completed, and hands work to the next team (e.g. Procurement). Reminds the PM when consultant approvals stall. On handover it creates an AMC opportunity, so the relationship continues into service.",
+    category: "Projects",
+    trigger: "When a project checklist changes, plus every 15 minutes",
+    defaults: { approvalStallDays: 14, amcValuePct: 3 },
+    configLabels: { approvalStallDays: "Remind PM if approvals open after (days)", amcValuePct: "AMC value estimate (% of project value)" },
+    onEvent: {
+      "project.updated": async (ctx, cfg, { id }) => {
+        const p = await db.query.projects.findFirst({ where: eq(S.projects.id, id) });
+        if (!p || p.phase === "closed") return;
+        const firstOpen = PROJECT_PHASES.find((ph) => p.checklist.some((c) => c.phase === ph.key && !c.done));
+        const next = firstOpen?.key ?? "closed";
+        if (next === p.phase) return;
+        const done = p.checklist.filter((c) => c.done).length;
+        await db
+          .update(S.projects)
+          .set({ phase: next, status: next === "closed" ? "completed" : next === "award" ? "handover" : "execution", progress: Math.round((done / p.checklist.length) * 100) })
+          .where(eq(S.projects.id, id));
+        await ctx.activity("project", id, `Phase: ${phaseLabel(p.phase)} → ${phaseLabel(next)}`);
+        const name = await acctName(p.accountId);
+        if (next !== "closed") {
+          const role = PROJECT_PHASES.find((x) => x.key === next)!.owner;
+          const team = (await usersBy(role, p.branch)).concat(await usersBy(role));
+          const who = team[0]?.id ?? p.pmId;
+          await ctx.notify(who, `${p.code} is now in ${phaseLabel(next)}`, { body: `${name}: ${p.name}`, link: `/projects/${id}`, dedupe: `phase-${id}-${next}` });
+          if (who !== p.pmId) await ctx.notify(p.pmId, `${p.code} moved to ${phaseLabel(next)}`, { link: `/projects/${id}`, dedupe: `phase-pm-${id}-${next}` });
+          ctx.note(`${p.code} → ${phaseLabel(next)}`);
+          return;
+        }
+        // Handover complete → AMC opportunity, so service revenue starts without anyone having to remember.
+        const acc = await db.query.accounts.findFirst({ where: eq(S.accounts.id, p.accountId) });
+        const oid = uid();
+        await db.insert(S.opportunities).values({
+          id: oid, code: await nextCode("O", 1041), accountId: p.accountId, title: `AMC after handover – ${p.name}`, division: "AMC / Service", branch: p.branch,
+          stage: "qualified", value: Math.round((p.value * cfg.amcValuePct) / 100 / 100) * 100, ownerId: acc?.ownerId ?? p.pmId, source: "Project handover",
+          nextAction: "Share AMC proposal with warranty terms", nextActionDue: new Date(ctx.now.getTime() + 7 * DAY), stageChangedAt: ctx.now, lastActivityAt: ctx.now,
+        });
+        await ctx.task({ title: `Propose AMC to ${name} (handover of ${p.code})`, assignedTo: acc?.ownerId ?? p.pmId, dueAt: new Date(ctx.now.getTime() + 7 * DAY), entityType: "opportunity", entityId: oid, priority: "high", dedupe: `handover-amc-${id}` });
+        ctx.note(`${p.code} handed over → AMC opportunity created`);
+      },
+    },
+    onSchedule: async (ctx, cfg) => {
+      const list = await db.select().from(S.projects).where(inArray(S.projects.phase, ["award", "engineering"]));
+      const wk = Math.floor(ctx.now.getTime() / (7 * DAY));
+      for (const p of list) {
+        const age = (ctx.now.getTime() - p.createdAt.getTime()) / DAY;
+        const pending = p.checklist.filter((c) => c.phase === "engineering" && !c.done).map((c) => c.item);
+        if (age >= cfg.approvalStallDays && pending.length)
+          if (await ctx.task({ title: `${p.code}: chase consultant approvals (${pending.join(", ")})`, assignedTo: p.pmId, dueAt: new Date(ctx.now.getTime() + 2 * DAY), entityType: "project", entityId: p.id, priority: "high", dedupe: `appr-stall-${p.id}-${wk}` }))
+            ctx.note(`${p.code}: approvals stalled ${Math.round(age)} d`);
       }
     },
   },

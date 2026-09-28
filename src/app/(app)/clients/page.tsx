@@ -4,17 +4,20 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { OPEN_STAGES } from "@/lib/constants";
 import { money } from "@/lib/format";
-import { PageHeader, Pill, TableWrap } from "@/components/ui";
+import { PageHeader, Pill, TableWrap, Tabs } from "@/components/ui";
 
 export const metadata = { title: "Clients" };
 
 export default async function Clients(props: PageProps<"/clients">) {
   const user = await requireUser();
   const scope = await branchScope(user);
-  const q = String((await props.searchParams).q ?? "").toLowerCase();
+  const sp = await props.searchParams;
+  const q = String(sp.q ?? "").toLowerCase();
+  const tab = String(sp.tab ?? "Clients");
   const L = await lookups();
   const [opps, amcs, tickets] = await Promise.all([db.select().from(S.opportunities), db.select().from(S.amcContracts), db.select().from(S.tickets)]);
-  const list = L.accounts.filter((a) => (!scope || a.branch === scope) && (!q || `${a.name} ${a.industry} ${a.city}`.toLowerCase().includes(q)));
+  const inTab = (k: string) => (tab === "Clients" ? k === "client" : k !== "client");
+  const list = L.accounts.filter((a) => inTab(a.kind) && (!scope || a.branch === scope || a.kind !== "client") && (!q || `${a.name} ${a.industry} ${a.city}`.toLowerCase().includes(q)));
   return (
     <>
       <PageHeader
@@ -27,12 +30,14 @@ export default async function Clients(props: PageProps<"/clients">) {
           </>
         }
       />
+      <Tabs current={tab} items={[{ href: "?tab=Clients", label: "Clients", count: L.accounts.filter((a) => a.kind === "client").length }, { href: "?tab=Consultants", label: "Consultants & architects", count: L.accounts.filter((a) => a.kind !== "client").length }]} />
+      {tab !== "Clients" && <p className="text-xs text-muted">Consultants and architects specify the makes and float the tenders. Tracking which ones bring projects shows where to invest relationship time.</p>}
       <TableWrap>
         <table className="tbl">
           <thead><tr><th>Client</th><th>Industry</th><th>Location</th><th>Tier</th><th>Account owner</th><th className="num">Open pipeline</th><th className="num">Won</th><th className="num">AMC / yr</th><th className="num">Open tickets</th></tr></thead>
           <tbody>
             {list.map((a) => {
-              const o = opps.filter((x) => x.accountId === a.id);
+              const o = opps.filter((x) => x.accountId === a.id || x.consultantId === a.id || x.architectId === a.id);
               const pv = o.filter((x) => OPEN_STAGES.includes(x.stage)).reduce((s, x) => s + x.value, 0);
               const wv = o.filter((x) => x.stage === "won").reduce((s, x) => s + x.value, 0);
               const av = amcs.filter((x) => x.accountId === a.id && x.status !== "lapsed").reduce((s, x) => s + x.annualValue, 0);

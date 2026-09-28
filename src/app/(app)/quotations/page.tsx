@@ -21,7 +21,11 @@ export default async function Quotations(props: PageProps<"/quotations">) {
   const list = rows.filter(({ q }) => (tab === "Active" ? !["superseded", "accepted", "rejected"].includes(q.status) : tab === "Awaiting approval" ? q.status === "pending_approval" : tab === "AMC renewals" ? q.kind === "amc_renewal" : true));
   return (
     <>
-      <PageHeader title="Quotations" sub="Every quotation and revision in one place, with value, approval status and client follow-up." />
+      <PageHeader
+        title="Quotations"
+        sub="Every quotation and revision in one place, with value, approval status and client follow-up. Consultant BOQs are imported, auto-priced and exported back in the client's format."
+        actions={<><a className="btn" href="/quotations/rates">Rate library</a><a className="btn btn-primary" href="/quotations/import">Import client BOQ (.xlsx)</a></>}
+      />
       <Tabs
         current={tab}
         items={[
@@ -37,7 +41,7 @@ export default async function Quotations(props: PageProps<"/quotations">) {
           <tbody>
             {list.map(({ q, o, t }) => (
               <tr key={q.id} className="row-link">
-                <td><Link className="link font-mono text-xs" href={`/quotations/${q.id}`}>{q.code} R{q.revision}</Link></td>
+                <td><Link className="link font-mono text-xs" href={`/quotations/${q.id}`}>{q.code} R{q.revision}</Link>{q.source === "boq_import" && <div className="text-[10.5px] font-semibold uppercase text-accent">client BOQ</div>}</td>
                 <td><div className="font-medium">{L.acctName(o.accountId)}</div><div className="text-xs text-muted">{o.title}</div></td>
                 <td>{L.userName(q.createdBy ?? o.ownerId)}</td>
                 <td className="whitespace-nowrap">{fmtDate(q.sentAt ?? q.createdAt)}</td>

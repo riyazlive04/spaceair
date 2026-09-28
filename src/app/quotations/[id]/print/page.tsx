@@ -19,9 +19,9 @@ export default async function PrintQuote(props: PageProps<"/quotations/[id]/prin
   const t = quoteTotals(items, q.discountPct, q.gstPct);
   return (
     <main className="mx-auto flex max-w-[820px] flex-col gap-6 bg-white p-10 text-[13px] text-[#13222b] [color-scheme:light]">
-      <header className="flex items-start justify-between border-b-2 border-[#0a6f8c] pb-4">
+      <header className="flex items-start justify-between border-b-2 border-[#3a7266] pb-4">
         <div>
-          <div className="h-display text-[26px] tracking-[0.04em]" style={{ fontStretch: "80%" }}>SPACE<span className="text-[#0a6f8c]">AIR</span></div>
+          <img src="/brand/spaceair-logo.png" alt="SPACEAIR – Feel the Difference" width={137} height={47} className="mb-1" />
           <div className="text-xs text-[#6b7c85]">MEP Contracting · HVAC · Fire · Electrical · Plumbing<br />Chennai · Bangalore · Hyderabad · Renigunta · Colombo</div>
         </div>
         <div className="text-right">

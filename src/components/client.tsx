@@ -32,13 +32,32 @@ export function Flash() {
   );
 }
 
-export function Submit({ children, className, pendingText }: { children: ReactNode; className?: string; pendingText?: string }) {
-  const { pending } = useFormStatus();
+export function Submit({ children, className, pendingText, name, value }: { children: ReactNode; className?: string; pendingText?: string; name?: string; value?: string }) {
+  const { pending, data } = useFormStatus();
+  // with several submit buttons, only the one that was clicked shows the pending text
+  const mine = !name || !data || data.get(name) === value;
   return (
-    <button type="submit" disabled={pending} className={cn("btn", className)}>
-      {pending ? pendingText ?? "Saving…" : children}
+    <button type="submit" name={name} value={value} disabled={pending} className={cn("btn", className)}>
+      {pending && mine ? pendingText ?? "Saving…" : children}
     </button>
   );
+}
+
+/** Starts a file download once, when the page loads (e.g. right after an upload). */
+export function AutoDownload({ href }: { href: string }) {
+  useEffect(() => {
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // drop ?download=… so a refresh doesn't download again
+    const url = new URL(window.location.href);
+    url.searchParams.delete("download");
+    window.history.replaceState(null, "", url);
+  }, [href]);
+  return null;
 }
 
 /** Small disclosure used for inline forms (log response, disqualify, new task…). */

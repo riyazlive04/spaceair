@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Inbox, KanbanSquare, Building2, FileText, BadgeCheck, HardHat, CalendarClock, Wrench,
-  ListChecks, BarChart3, Workflow, Bell, Settings, type LucideIcon,
+  ListChecks, BarChart3, Workflow, Bell, Settings, Library, FileSpreadsheet, Barcode, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 
@@ -22,10 +22,13 @@ const GROUPS: { label: string; items: Item[] }[] = [
     { href: "/pipeline", label: "Pipeline", icon: KanbanSquare, roles: ["owner", "branch_head", "sales", "estimator"] },
     { href: "/clients", label: "Clients", icon: Building2, roles: ["owner", "branch_head", "sales", "estimator", "service_manager", "accounts"] },
     { href: "/quotations", label: "Quotations", icon: FileText, roles: ["owner", "branch_head", "sales", "estimator", "accounts"] },
+    { href: "/quotations/import", label: "Import client BOQ", icon: FileSpreadsheet, roles: ["owner", "branch_head", "sales", "estimator"] },
+    { href: "/boq", label: "BOQ → OMC", icon: Barcode, roles: ["owner", "branch_head", "sales", "estimator", "procurement"] },
+    { href: "/references", label: "References", icon: Library, roles: ["owner", "branch_head", "sales", "estimator", "projects"] },
     { href: "/approvals", label: "Approvals", icon: BadgeCheck, roles: ["owner", "branch_head"], badge: "approvals", alert: true },
   ] },
   { label: "Delivery & service", items: [
-    { href: "/projects", label: "Projects", icon: HardHat, roles: ["owner", "branch_head", "estimator", "accounts"] },
+    { href: "/projects", label: "Projects", icon: HardHat, roles: ["owner", "branch_head", "estimator", "projects", "procurement", "accounts"] },
     { href: "/amc", label: "AMC contracts", icon: CalendarClock, roles: ["owner", "branch_head", "sales", "service_manager", "accounts"] },
     { href: "/service", label: "Service tickets", icon: Wrench, roles: ["owner", "branch_head", "service_manager", "technician"], badge: "service" },
   ] },
@@ -47,7 +50,7 @@ export function Nav({ role, counts }: { role: string; counts: Counts }) {
           <div key={g.label} className="flex flex-col gap-0.5 max-md:flex-row">
             <div className="label px-2.5 pb-1.5 pt-3 max-md:hidden">{g.label}</div>
             {items.map((i) => {
-              const active = path === i.href || path.startsWith(i.href + "/") || (i.href === "/pipeline" && path.startsWith("/opportunities"));
+              const active = path === i.href || (path.startsWith(i.href + "/") && !(i.href === "/quotations" && path.startsWith("/quotations/import"))) || (i.href === "/pipeline" && path.startsWith("/opportunities"));
               const n = i.badge ? counts[i.badge] : 0;
               return (
                 <Link

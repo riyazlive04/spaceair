@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/automation/ctx";
 import { fmtDate, money, quoteTotals, fmtDateTime } from "@/lib/format";
 import { Card, PageHeader, Pill } from "@/components/ui";
 import { QuoteEditor } from "@/components/quote-editor";
+import { MakesEditor } from "@/components/makes-editor";
 
 const TONE = { draft: "neutral", pending_approval: "warn", approved: "info", sent: "info", accepted: "good", rejected: "crit", superseded: "neutral" } as const;
 
@@ -32,6 +33,7 @@ export default async function QuotationDetail(props: PageProps<"/quotations/[id]
         actions={
           <>
             <Pill tone={TONE[q.status]}>{q.status.replace("_", " ")}</Pill>
+            <a className="btn" href={`/api/quotations/${q.id}/boq`} download>{q.source === "boq_import" ? "Download priced BOQ (client format)" : "Download BOQ (.xlsx)"}</a>
             <Link className="btn" href={`/quotations/${q.id}/print`} target="_blank">Print / PDF</Link>
           </>
         }
@@ -41,7 +43,8 @@ export default async function QuotationDetail(props: PageProps<"/quotations/[id]
           <QuoteEditor
             id={q.id}
             status={q.status}
-            items={items.map((i) => ({ description: i.description, unit: i.unit, qty: i.qty, rate: i.rate }))}
+            split={q.source === "boq_import" || items.some((i) => i.supplyRate != null)}
+            items={items.map((i) => ({ description: i.description, unit: i.unit, qty: i.qty, rate: i.rate, supplyRate: i.supplyRate, installRate: i.installRate, qro: i.qro, itemNo: i.itemNo, section: i.section, sheet: i.sheet, sourceRow: i.sourceRow, floorQty: i.floorQty, rateSource: i.rateSource }))}
             discountPct={q.discountPct}
             validityDays={q.validityDays}
             terms={q.terms ?? ""}
@@ -50,6 +53,21 @@ export default async function QuotationDetail(props: PageProps<"/quotations/[id]
           />
         </Card>
         <div className="flex flex-col gap-4">
+          {q.source === "boq_import" && (
+            <Card title="Tender / BOQ details" sub={q.fileName ?? undefined}>
+              <dl className="grid grid-cols-[96px_1fr] gap-x-2 gap-y-1 text-[12.5px]">
+                {q.dueAt && (<><dt className="text-muted">Submit by</dt><dd className={q.dueAt < new Date() ? "font-semibold text-crit" : "font-semibold"}>{fmtDateTime(q.dueAt)}</dd></>)}
+                {([["project", "Project"], ["client", "Client"], ["consultant", "Consultant"], ["architect", "Architect"], ["docRef", "Doc ref"], ["revision", "Client rev."], ["date", "Issued"], ["preparedBy", "Prepared by"]] as const).flatMap(([k, label]) =>
+                  q.meta?.[k] ? [<dt key={`${k}-l`} className="text-muted">{label}</dt>, <dd key={`${k}-v`}>{q.meta[k]}</dd>] : [],
+                )}
+              </dl>
+            </Card>
+          )}
+          {q.makes && q.makes.length > 0 && (
+            <Card title="Approved makes">
+              <MakesEditor id={q.id} makes={q.makes} editable={["draft", "approved"].includes(q.status)} />
+            </Card>
+          )}
           <Card title="Revision history">
             {revs.map((r, i) => (
               <Link key={r.id} href={`/quotations/${r.id}`} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px] ${r.id === q.id ? "bg-accent-soft" : "hover:bg-surface-2"}`}>

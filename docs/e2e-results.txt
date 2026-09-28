@@ -10,11 +10,24 @@ PASS  New ticket auto-assigned to a technician
 PASS  No AMC → marked chargeable
 PASS  Feedback WhatsApp sent on resolution
 PASS  Enquiry converted to opportunity
+PASS  BOQ imported: 17 lines, 3 QRO
+PASS  Auto-priced: 13 from library, 3 estimated
+PASS  Consultant and architect linked from the BOQ header
+PASS  Estimator review task created
+PASS  Priced BOQ downloads as .xlsx
+PASS  Rates written into the client's workbook, formulas kept
+PASS  Sending the quote grows the rate library
+PASS  Engineering done → project moves to Procurement
+PASS  Procurement team notified
 PASS  GET /dashboard → 200
 PASS  GET /enquiries → 200
 PASS  GET /pipeline → 200
 PASS  GET /clients → 200
+PASS  GET /clients?tab=Consultants → 200
 PASS  GET /quotations → 200
+PASS  GET /quotations/import → 200
+PASS  GET /quotations/rates → 200
+PASS  GET /references → 200
 PASS  GET /approvals → 200
 PASS  GET /projects → 200
 PASS  GET /amc → 200

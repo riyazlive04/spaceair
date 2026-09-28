@@ -2,21 +2,20 @@ import { connection } from "next/server";
 import { db, schema as S } from "@/db";
 import { loginAs } from "@/lib/actions";
 import { ROLE_LABELS } from "@/lib/constants";
+import { Logo } from "@/components/logo";
 
 export const metadata = { title: "Sign in" };
 
-const ORDER = ["owner", "branch_head", "sales", "estimator", "service_manager", "technician", "accounts"];
+const ORDER = ["owner", "branch_head", "sales", "estimator", "projects", "procurement", "service_manager", "technician", "accounts"];
 
 export default async function Login() {
   await connection();
   const users = (await db.select().from(S.users)).sort((a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role));
-  const featured = ["u-owner", "u-bh-che", "u-karthik", "u-prakash", "u-manoj", "u-lakshmi"];
+  const featured = ["u-owner", "u-bh-che", "u-karthik", "u-anitha", "u-gokul", "u-prakash", "u-manoj", "u-lakshmi"];
   return (
     <main className="mx-auto flex min-h-full max-w-5xl flex-col gap-8 px-4 py-12">
       <div className="flex flex-col gap-2">
-        <span className="h-display text-[28px] tracking-[0.04em]" style={{ fontStretch: "80%" }}>
-          SPACE<span className="text-accent">AIR</span> CRM
-        </span>
+        <Logo height={56} />
         <h1 className="h-display max-w-2xl text-[34px] leading-[1.1]" style={{ fontStretch: "82%" }}>
           One system from first enquiry to AMC renewal, run by the team rather than by one person.
         </h1>

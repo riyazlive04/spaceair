@@ -46,10 +46,14 @@ export function slaState(t: { createdAt: Date; slaHours: number; status: string 
   return { tone: "neutral" as const, label: `${Math.round(left)} h left`, hoursLeft: left };
 }
 
-export function quoteTotals(items: { qty: number; rate: number }[], discountPct: number, gstPct: number) {
-  const basic = items.reduce((s, i) => s + i.qty * i.rate, 0);
+/** Totals for a quotation. "QRO" lines (rate only, quantity to be decided) are excluded. */
+export function quoteTotals(items: { qty: number; rate: number; qro?: boolean | null; supplyRate?: number | null; installRate?: number | null }[], discountPct: number, gstPct: number) {
+  const live = items.filter((i) => !i.qro);
+  const supply = live.reduce((s, i) => s + i.qty * (i.supplyRate ?? i.rate), 0);
+  const install = live.reduce((s, i) => s + i.qty * (i.installRate ?? 0), 0);
+  const basic = live.reduce((s, i) => s + i.qty * i.rate, 0);
   const discount = (basic * discountPct) / 100;
   const net = basic - discount;
   const gst = (net * gstPct) / 100;
-  return { basic, discount, net, gst, total: net + gst };
+  return { basic, discount, net, gst, total: net + gst, supply, install };
 }

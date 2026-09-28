@@ -83,8 +83,49 @@ async function main() {
   await Promise.all([page.waitForURL("**/opportunities/**"), page.getByRole("button", { name: "Convert to opportunity" }).click()]);
   check("Enquiry converted to opportunity", (await q1("select status from enquiries where id=?", [enq]))?.status === "converted");
 
-  // 7. Every main page renders without a server error
-  for (const p of ["/dashboard", "/enquiries", "/pipeline", "/clients", "/quotations", "/approvals", "/projects", "/amc", "/service", "/tasks", "/reports", "/automations", "/automations/messages", "/settings", "/notifications"]) {
+  // 7. Estimator imports a consultant BOQ (.xlsx) → auto-priced → exported back into the client's own file
+  await login(page, "u-anitha");
+  await page.goto(`${BASE}/quotations/import`);
+  await page.setInputFiles('input[name="file"]', "public/samples/Sample-Unpriced-BOQ-HVAC.xlsx");
+  await Promise.all([page.waitForURL(/\/quotations\/[0-9a-f-]{36}$/, { timeout: 60000 }), page.getByRole("button", { name: "Import & auto-price" }).click()]);
+  const bq = page.url().split("/quotations/")[1];
+  const cnt = await q1("select count(*) n, sum(rate_source='library') lib, sum(rate_source='estimated') est, sum(qro) qro from quote_items where quotation_id=?", [bq]);
+  check(`BOQ imported: ${cnt?.n} lines, ${cnt?.qro} QRO`, Number(cnt?.n) === 17 && Number(cnt?.qro) === 3);
+  check(`Auto-priced: ${cnt?.lib} from library, ${cnt?.est} estimated`, Number(cnt?.lib) >= 10 && Number(cnt?.est) >= 2);
+  const bqq = await q1("select q.meta, o.consultant_id c, o.architect_id a from quotations q join opportunities o on o.id=q.opportunity_id where q.id=?", [bq]);
+  check("Consultant and architect linked from the BOQ header", bqq?.c && bqq?.a && String(bqq?.meta).includes("Airtech"));
+  check("Estimator review task created", await q1("select id from tasks where dedupe_key=?", [`boq-review-${bq}`]));
+  const dl = await page.request.get(`${BASE}/api/quotations/${bq}/boq`);
+  check("Priced BOQ downloads as .xlsx", dl.ok() && (dl.headers()["content-type"] ?? "").includes("spreadsheetml"));
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load((await dl.body()) as unknown as ArrayBuffer);
+  const ws = wb.getWorksheet("Ventilation BOQ")!;
+  const sr = (await q1("select source_row r, supply_rate s from quote_items where quotation_id=? and rate_source='library' order by sort limit 1", [bq]))!;
+  check("Rates written into the client's workbook, formulas kept", Number(ws.getRow(Number(sr.r)).getCell(8).value) === Number(sr.s) && typeof ws.getRow(Number(sr.r)).getCell(10).value === "object");
+  // Priced → approved → sent teaches the rate library
+  await page.getByRole("button", { name: "Submit for approval" }).click();
+  await page.waitForTimeout(1500);
+  await page.reload();
+  const libBefore = Number((await q1("select count(*) n from rate_items"))?.n);
+  await page.getByRole("button", { name: "Send to client" }).click();
+  await page.waitForTimeout(1500);
+  check("Sending the quote grows the rate library", Number((await q1("select count(*) n from rate_items"))?.n) > libBefore);
+
+  // 8. Project phase gates: finishing engineering approvals moves the project to Procurement
+  await login(page, "u-gokul");
+  const pj = (await q1("select id from projects where code='P-2603'"))!.id as string;
+  await page.goto(`${BASE}/projects/${pj}`);
+  for (const item of ["Material approvals (approved makes)", "Shop drawings approved"]) {
+    await page.getByRole("button", { name: item }).click();
+    await page.waitForTimeout(900);
+  }
+  check("Engineering done → project moves to Procurement", (await q1("select phase from projects where id=?", [pj]))?.phase === "procurement");
+  check("Procurement team notified", await q1("select id from notifications where user_id='u-divya' and link=?", [`/projects/${pj}`]));
+
+  // 9. Every main page renders without a server error
+  await login(page, "u-owner");
+  for (const p of ["/dashboard", "/enquiries", "/pipeline", "/clients", "/clients?tab=Consultants", "/quotations", "/quotations/import", "/quotations/rates", "/references", "/approvals", "/projects", "/amc", "/service", "/tasks", "/reports", "/automations", "/automations/messages", "/settings", "/notifications"]) {
     const res = await page.goto(BASE + p);
     check(`GET ${p} → ${res?.status()}`, res?.status() === 200);
   }

@@ -74,7 +74,7 @@ export default async function Reports() {
       </div>
       <div className="grid grid-cols-2 gap-4 max-xl:grid-cols-1">
         <Card title="Orders won vs open pipeline by branch" sub="₹ lakhs / crores, one shared scale">
-          <GroupedBars data={branchData} series={[{ key: "won", name: "Won", color: "var(--good)" }, { key: "open", name: "Open pipeline", color: "var(--accent)" }]} />
+          <GroupedBars data={branchData} series={[{ key: "won", name: "Won", color: "var(--accent)" }, { key: "open", name: "Open pipeline", color: "var(--muted)" }]} />
         </Card>
         <Card title="Who decides?" sub="Quotation approvals by level, under the delegation matrix">
           <HBars data={decisionData} name="Approvals" />

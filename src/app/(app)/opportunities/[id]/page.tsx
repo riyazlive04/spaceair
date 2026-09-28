@@ -96,6 +96,8 @@ export default async function OpportunityDetail(props: PageProps<"/opportunities
               <dt className="text-muted">Source</dt><dd>{o.source}</dd>
               <dt className="text-muted">Owner</dt><dd>{L.userName(o.ownerId)}</dd>
               <dt className="text-muted">Client</dt><dd><Link className="link" href={`/clients/${o.accountId}`}>{L.acctName(o.accountId)}</Link></dd>
+              {o.consultantId && (<><dt className="text-muted">Consultant</dt><dd><Link className="link" href={`/clients/${o.consultantId}`}>{L.acctName(o.consultantId)}</Link></dd></>)}
+              {o.architectId && (<><dt className="text-muted">Architect</dt><dd><Link className="link" href={`/clients/${o.architectId}`}>{L.acctName(o.architectId)}</Link></dd></>)}
               {o.lostReason && (<><dt className="text-muted">Lost reason</dt><dd className="text-crit">{o.lostReason}</dd></>)}
               {project && (<><dt className="text-muted">Project</dt><dd><Link className="link" href={`/projects/${project.id}`}>{project.code}</Link></dd></>)}
             </dl>

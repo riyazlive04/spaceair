@@ -1,6 +1,11 @@
 /* Seeds the local database with sample data, then runs the automation engine over it. */
 import { db, schema as S } from "../src/db";
 import { ensureRules, emit, runScheduled } from "../src/lib/automation/engine";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { projectChecklist } from "../src/lib/constants";
+import { rateKey } from "../src/lib/boq";
+import { importBoq } from "../src/lib/boq-import";
+import { makeSampleBoq } from "./sample-boq";
 
 const NOW = Date.now();
 const H = 36e5, D = 864e5;
@@ -10,7 +15,7 @@ const L = (lakhs: number) => lakhs * 1e5;
 const id = () => crypto.randomUUID();
 
 async function wipe() {
-  for (const t of [S.automationRuns, S.automationRules, S.outbox, S.notifications, S.tickets, S.ppmVisits, S.amcContracts, S.projects, S.approvals, S.quoteItems, S.quotations, S.tasks, S.activities, S.opportunities, S.enquiries, S.contacts, S.accounts, S.users, S.settings])
+  for (const t of [S.rateItems, S.referenceProjects, S.automationRuns, S.automationRules, S.outbox, S.notifications, S.tickets, S.ppmVisits, S.amcContracts, S.projects, S.approvals, S.quoteItems, S.quotations, S.tasks, S.activities, S.opportunities, S.enquiries, S.contacts, S.accounts, S.users, S.settings])
     await db.delete(t);
 }
 
@@ -28,6 +33,9 @@ const users = [
   ["u-arjun", "Arjun M", "sales", "Hyderabad", "Sales Engineer"],
   ["u-ravi", "Ravi Teja", "sales", "Renigunta", "Sales Engineer"],
   ["u-anitha", "Anitha V", "estimator", "Chennai", "Estimation & Design Lead"],
+  ["u-naveen", "Naveen P", "estimator", "Bangalore", "Estimation Engineer"],
+  ["u-gokul", "Gokul S", "projects", "Chennai", "Projects & Planning Manager"],
+  ["u-divya", "Divya M", "procurement", "Chennai", "Procurement Lead"],
   ["u-prakash", "Prakash M", "service_manager", "Chennai", "Service Manager – South"],
   ["u-kiran", "Kiran B", "service_manager", "Bangalore", "Service Manager – Karnataka"],
   ["u-manoj", "Manoj K", "technician", "Chennai", "HVAC Technician"],
@@ -54,6 +62,9 @@ const accounts = [
   ["A12", "Shriram Properties", "Residential developer", "Chennai", "Chennai", "Growth", "u-deepa"],
   ["A13", "Harbour Tech Park (sample)", "Commercial real estate", "Colombo", "Colombo", "New", "u-bh-col"],
   ["A14", "Olympia Tech Park", "Commercial real estate", "Chennai", "Chennai", "Growth", "u-karthik"],
+  ["C01", "Airtech MEP Consultants (sample)", "MEP consultant", "Chennai", "Chennai", "Key", "u-bh-che"],
+  ["C02", "Studio Lines Architects (sample)", "Architect", "Bangalore", "Bangalore", "Growth", "u-bh-blr"],
+  ["C03", "PMC Axis Engineering (sample)", "MEP consultant", "Hyderabad", "Hyderabad", "Growth", "u-bh-hyd"],
 ] as const;
 
 const contacts: Record<string, [string, string][]> = {
@@ -71,6 +82,9 @@ const contacts: Record<string, [string, string][]> = {
   A12: [["V. Ramesh", "Project Manager"]],
   A13: [["Nimal Perera", "Chief Engineer"]],
   A14: [["S. Ganesh", "Estate Manager"]],
+  C01: [["R. Balaji", "Principal MEP Consultant"]],
+  C02: [["Ar. Nandini Rao", "Principal Architect"]],
+  C03: [["Mohan Krishna", "Project Manager (PMC)"]],
 };
 
 // code, acc, title, division, branch, stage, lakhs, owner, source, next action, due (days), last activity (days ago), TR
@@ -131,7 +145,8 @@ async function main() {
       phone: `+91 9${String(Math.abs([...uid].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % 1e9).padStart(9, "0")}`,
     })),
   );
-  await db.insert(S.accounts).values(accounts.map(([aid, name, ind, city, branch, tier, owner], i) => ({ id: aid, name, industry: ind, city, branch, tier, ownerId: owner, createdAt: new Date(NOW - (400 - i * 20) * D) })));
+  const SECTOR: Record<string, string> = { "IT campus": "Commercial", "IT services": "Commercial", "R&D centre": "Commercial", "Commercial real estate": "Commercial", "Office / co-working": "Commercial", "Retail chain": "Retail", "Automotive plant": "Industrial", "Electronics manufacturing": "Industrial", Pharma: "Industrial", "Residential developer": "Residential" };
+  await db.insert(S.accounts).values(accounts.map(([aid, name, ind, city, branch, tier, owner], i) => ({ id: aid, name, industry: ind, city, branch, tier, ownerId: owner, kind: aid.startsWith("C") ? (ind === "Architect" ? ("architect" as const) : ("consultant" as const)) : ("client" as const), sector: SECTOR[ind] ?? null, createdAt: new Date(NOW - (400 - i * 20) * D) })));
   let ci = 0;
   for (const [aid, list] of Object.entries(contacts))
     for (const [name, role] of list)
@@ -145,6 +160,8 @@ async function main() {
       id: oid, code, accountId: acc, title, division: div, branch, stage, value: L(lakhs), ownerId: owner, source: src,
       nextAction: next, nextActionDue: dFrom(due), lastActivityAt: dFrom(-act), stageChangedAt: dFrom(-act - 3),
       expectedClose: dFrom(30 + due), tonnage: tr, lostReason: stage === "lost" ? "Price – L2 by 6%" : null, createdAt: dFrom(-60 - act),
+      consultantId: ({ "O-1041": "C01", "O-1043": "C01", "O-1046": "C01", "O-1048": "C03", "O-1050": "C03", "O-1049": "C03" } as Record<string, string>)[code] ?? null,
+      architectId: ({ "O-1043": "C02", "O-1048": "C02" } as Record<string, string>)[code] ?? null,
     });
     await db.insert(S.activities).values([
       { id: id(), entityType: "opportunity", entityId: oid, kind: "system", body: `Created from enquiry (${src})`, userId: owner, createdAt: dFrom(-60 - act) },
@@ -235,10 +252,45 @@ async function main() {
     await db.insert(S.tickets).values({ id: id(), code, accountId: acc, site, issue, priority: pri, slaHours: sla, status, technicianId: tech, amcId: amc ? amcIds[amc] : null, branch, chargeable: code === "T-5507", createdAt: hAgo(h), resolvedAt: status === "resolved" ? hAgo(h - 20) : null, resolution: status === "resolved" ? "Pump bearing replaced; vibration within limits" : null, source: code === "T-5501" ? "WhatsApp" : "Phone" });
 
   // Projects already in execution
-  await db.insert(S.projects).values({ id: id(), code: "P-2601", opportunityId: oppIds["O-1045"], accountId: "A05", name: "Paint shop ventilation & exhaust", branch: "Renigunta", value: L(560), pmId: "u-bh-ren", status: "execution", progress: 35,
-    checklist: ["PO / LOI copy filed", "Approved drawings & final BOQ handed to Projects", "Kick-off meeting with client & PMC", "Advance invoice raised", "Material indent & vendor POs", "Site mobilisation, permits & safety induction", "Execution schedule shared with client"].map((item, i) => ({ item, done: i < 5 })), createdAt: dFrom(-40) });
-  await db.insert(S.projects).values({ id: id(), code: "P-2602", opportunityId: oppIds["O-1054"], accountId: "A14", name: "VRF retrofit + AMC conversion", branch: "Chennai", value: L(48), pmId: "u-bh-che", status: "completed", progress: 100,
-    checklist: ["PO / LOI copy filed", "Kick-off meeting with client & PMC", "Advance invoice raised", "Handover & AMC signed"].map((item) => ({ item, done: true })), createdAt: dFrom(-120) });
+  const pct = (c: { done: boolean }[]) => Math.round((c.filter((x) => x.done).length / c.length) * 100);
+  const c1 = projectChecklist(3).map((c) => (c.phase === "execution" && c.item.startsWith("Work permits") ? { ...c, done: true } : c));
+  await db.insert(S.projects).values({ id: id(), code: "P-2601", opportunityId: oppIds["O-1045"], accountId: "A05", name: "Paint shop ventilation & exhaust", branch: "Renigunta", value: L(560), pmId: "u-gokul", status: "execution", phase: "execution", progress: pct(c1), checklist: c1, createdAt: dFrom(-40) });
+  const c2 = projectChecklist(6);
+  await db.insert(S.projects).values({ id: id(), code: "P-2602", opportunityId: oppIds["O-1054"], accountId: "A14", name: "VRF retrofit + AMC conversion", branch: "Chennai", value: L(48), pmId: "u-gokul", status: "completed", phase: "closed", progress: 100, checklist: c2, createdAt: dFrom(-120) });
+  const c3 = projectChecklist(1).map((c) => (c.item.startsWith("Technical submittals") ? { ...c, done: true } : c));
+  await db.insert(S.projects).values({ id: id(), code: "P-2603", accountId: "A03", name: "HVAC low-side works – Block C", branch: "Renigunta", value: L(240), pmId: "u-gokul", status: "execution", phase: "engineering", progress: pct(c3), checklist: c3, createdAt: dFrom(-20) });
+
+  // Rate library: past rates for common HVAC / electrical items (sample rates, not SPACEAIR's actual prices).
+  const r100 = (n: number) => Math.round(n / 100) * 100;
+  const r10 = (n: number) => Math.round(n / 10) * 10;
+  const rates: [string, string, string, number, number][] = [];
+  for (const [sec, esp, a, b, c, d] of [["CABINET DIDW FAN FOR EXHAUST AIR", 350, 21000, 6.4, 3200, 0.32], ["BI-FURCATED CABINET DIDW FAN FOR EXHAUST AIR", 350, 26000, 7.2, 3600, 0.35], ["CABINET DIDW FAN FOR OUTSIDE AIR", 350, 22500, 6.6, 3300, 0.33], ["SISW FAN FOR KITCHEN EXHAUST AIR", 300, 24000, 7.8, 3800, 0.38]] as const)
+    for (const cfm of [3500, 5250, 8950, 10600, 12100, 15150, 20500, 25650]) rates.push([sec, `${cfm} CFM ${esp} Pa ESP`, "Nos", r100(a + b * cfm), r100(c + d * cfm)]);
+  for (const w of [50, 100, 150, 200, 300, 450]) rates.push(["PERFORATED TYPE CABLE TRAY", `${w} mm W x 50 mm H`, "Rmt", r10(220 + 3.1 * w), r10(95 + 0.55 * w)]);
+  for (const w of [100, 150, 200, 300, 450]) rates.push(["LADDER TYPE CABLE TRAY", `${w} mm W x 50 mm H`, "Rmt", r10(380 + 3.6 * w), r10(120 + 0.6 * w)]);
+  for (const [sec, a, b, c, d] of [["MS CONDUIT", 95, 3.2, 45, 1.1], ["GI CONDUIT", 120, 3.8, 50, 1.2], ["PVC CONDUIT", 45, 1.6, 30, 0.8]] as const)
+    for (const dia of [20, 25, 32]) rates.push([sec, `${dia} mm Dia`, "Rmt", r10(a + b * dia), r10(c + d * dia)]);
+  for (const sz of [1.5, 2.5, 4, 6, 10, 16, 25]) rates.push(["ELECTRICAL CABLES TERMINATION", `3C x ${sz} Sq.mm XLPE Cu. Ar. Cable`, "Nos", r10(180 + 22 * sz), r10(150 + 9 * sz)]);
+  rates.push(["EARTHING WIRES", "6 SWG Wire", "Rmt", 85, 25], ["EARTHING WIRES", "8 SWG Wire", "Rmt", 70, 20]);
+  rates.push(["DUCT LEAKAGE AND PRESSURE TESTING WORKS", "Duct leakage and pressure testing of ductwork per AHU zone with a calibrated rig as per SMACNA, reports to consultant (lump sum)", "Lot", 45000, 38000]);
+  rates.push(["HVAC TAB WORKS", "Testing, adjusting and balancing of air systems by a certified TAB agency with final report for consultant approval (lump sum)", "Lot", 60000, 55000]);
+  rates.push(["MILD STEEL SUPPORT WORKS FOR HVAC EQUIPMENTS", "MS supports for HVAC equipment, ODUs, ducts and pipes incl. fabrication, primer and two coats of enamel paint (per kg)", "Kgs", 115, 45]);
+  for (const [sec, desc, unit, sr, ir] of rates)
+    await db.insert(S.rateItems).values({ id: id(), key: rateKey(sec, desc, unit), section: sec, description: desc, unit, supplyRate: sr, installRate: ir, source: "Seed – past project rates (sample)", uses: 1 + Math.floor(Math.random() * 4), updatedAt: dFrom(-30 - Math.floor(Math.random() * 200)) });
+
+  // Reference projects: public sample set, plus an optional local-only file (data/private/references.json, never committed).
+  const pubRefs = [
+    ["Amazon Development Centre (sample)", "Chennai", "Commercial", "VRF retrofit, 320 HP", { HVAC: "VRF 320 HP, comprehensive AMC", Scope: "Design, supply, installation, commissioning" }],
+    ["Cognizant (sample)", "Chennai", "Data centre", "2 × 400 TR chilled-water plant", { HVAC: "Chillers + 18 AHUs, precision cooling", Service: "Non-comprehensive AMC" }],
+    ["KIA India (sample)", "Anantapur", "Industrial", "Paint-shop ventilation & exhaust", { HVAC: "Ventilation & exhaust", Electrical: "Fan panels & cabling" }],
+    ["Reliance Retail (sample)", "Bangalore", "Retail", "38 stores on one AMC", { HVAC: "Splits & cassettes", "Fire & Safety": "Sprinklers for 6 Smart stores" }],
+    ["Pfizer (sample)", "Chennai", "Industrial", "ISO 8 clean room HVAC", { HVAC: "Clean-room AHUs & HEPA", Validation: "DQ / IQ / OQ" }],
+  ] as const;
+  for (const [client, city, sector, highlight, scope] of pubRefs) await db.insert(S.referenceProjects).values({ id: id(), client, city, sector, highlight, scope: { ...scope } });
+  const privFile = "data/private/references.json";
+  if (existsSync(privFile))
+    for (const r of JSON.parse(readFileSync(privFile, "utf8")) as { client: string; city: string; sector: string; highlight: string; scope: Record<string, string> }[])
+      await db.insert(S.referenceProjects).values({ id: id(), ...r, private: true });
 
   // A few manual tasks
   await db.insert(S.tasks).values([
@@ -247,7 +299,7 @@ async function main() {
     { id: id(), title: "Collect hydraulic calc approval from RMZ consultant", assignedTo: "u-priya", dueAt: dFrom(-1), entityType: "opportunity", entityId: oppIds["O-1048"], priority: "high" },
   ]);
 
-  for (const [k, v] of [["seq:E", 2307], ["seq:O", 1056], ["seq:T", 5508], ["seq:P", 2602], ["seq:Q-26", 195], ["seq:AMC", 308]] as const)
+  for (const [k, v] of [["seq:E", 2307], ["seq:O", 1056], ["seq:T", 5508], ["seq:P", 2603], ["seq:Q-26", 195], ["seq:AMC", 308]] as const)
     await db.insert(S.settings).values({ key: k, value: v });
 
   // ── Let the automation engine do its job on the sample data ──
@@ -270,6 +322,15 @@ async function main() {
   await emit("ticket.created", { id: t3 });
   await emit("quotation.sent", { id: (await db.query.quotations.findFirst({ where: (q, { eq }) => eq(q.code, "Q-26-180") }))!.id });
   await emit("opportunity.lost", { id: oppIds["O-1052"] });
+  // A consultant BOQ arrives: import the sample workbook through the same pipeline the UI uses.
+  const sample = await makeSampleBoq();
+  mkdirSync("public/samples", { recursive: true });
+  writeFileSync("public/samples/Sample-Unpriced-BOQ-HVAC.xlsx", sample);
+  const anitha = (await db.query.users.findFirst({ where: (u, { eq }) => eq(u.id, "u-anitha") }))!;
+  const imp = await importBoq(new File([new Uint8Array(sample)], "Sample-Unpriced-BOQ-HVAC.xlsx"), { user: anitha, branch: "Chennai", dueAt: dFrom(1.5) });
+  console.log(`Imported sample BOQ: ${imp.lines} lines`);
+  await emit("project.updated", { id: (await db.query.projects.findFirst({ where: (p, { eq }) => eq(p.code, "P-2601") }))!.id });
+
   const n = await runScheduled();
   console.log(`Seeded. Automation engine performed ${n} scheduled actions.`);
 }

@@ -12,13 +12,17 @@
     "setup": "npm run db:push && npm run db:seed",
     "screenshots": "tsx scripts/screenshots.ts",
     "report": "tsx scripts/report.ts",
-    "e2e": "tsx scripts/e2e.ts"
+    "e2e": "tsx scripts/e2e.ts",
+    "codes:import": "tsx scripts/import-product-codes.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@libsql/client": "^0.18.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
+    "exceljs": "^4.4.0",
     "jose": "^6.2.12",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
     "node-cron": "^4.6.0",

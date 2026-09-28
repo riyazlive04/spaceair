@@ -7,6 +7,7 @@ import { logout, setBranch } from "@/lib/actions";
 import { BRANCHES, ROLE_LABELS } from "@/lib/constants";
 import { Nav } from "@/components/nav";
 import { Flash, AutoSubmitSelect } from "@/components/client";
+import { Logo } from "@/components/logo";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
@@ -17,10 +18,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="grid min-h-full grid-cols-[236px_minmax(0,1fr)] max-md:grid-cols-1">
       <aside className="sticky top-0 flex h-screen flex-col gap-4 overflow-y-auto border-r border-line bg-surface px-3 py-4 max-md:static max-md:h-auto max-md:border-b max-md:border-r-0 max-md:px-4">
-        <Link href="/dashboard" className="flex flex-col px-2">
-          <span className="h-display text-[20px] tracking-[0.04em]" style={{ fontStretch: "80%" }}>
-            SPACE<span className="text-accent">AIR</span> CRM
-          </span>
+        <Link href="/dashboard" className="flex flex-col gap-1 px-2" aria-label="SPACEAIR CRM home">
+          <Logo height={42} />
           <span className="text-[11.5px] text-muted">MEP sales · AMC · service</span>
         </Link>
         <Nav role={user.role} counts={counts} />

@@ -66,6 +66,13 @@ async function main() {
   await shot(page, "21-reports", "/reports", { full: true, wait: 1200 });
   await shot(page, "22-settings", "/settings", { full: true });
   await shot(page, "23-inbox", "/notifications");
+  const boqQ = String((await db.execute("select id from quotations where source='boq_import' order by rowid desc limit 1")).rows[0].id);
+  await shot(page, "29-boq-import", "/quotations/import");
+  await shot(page, "30-boq-autopriced", `/quotations/${boqQ}`, { full: true });
+  await shot(page, "31-rate-library", "/quotations/rates");
+  await shot(page, "32-project-phases", `/projects/${await idOf("projects", "P-2601")}`, { full: true });
+  await shot(page, "33-consultants", "/clients?tab=Consultants");
+  await shot(page, "34-references", "/references", { full: true });
 
   // Discount above the sales limit → routed to branch head (live demo of the approval matrix)
   await ctx.clearCookies();

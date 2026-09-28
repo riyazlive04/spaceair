@@ -31,6 +31,7 @@ const TECH: [string, string, string, string][] = [
   ["Icons", "Lucide", ver("lucide-react"), "Consistent open-source icon set"],
   ["Fonts", "Archivo, IBM Plex Sans / Mono", "Google Fonts", "Loaded and self-hosted through next/font"],
   ["Testing & capture", "Playwright", ver("playwright"), "End-to-end workflow tests, screenshots and this PDF, driving the installed Chrome"],
+  ["Excel engine", "ExcelJS", ver("exceljs"), "Reads consultant BOQ workbooks and writes rates back into the client's own file, keeping formulas, images and sheets"],
   ["Tooling", "tsx, ESLint", ver("tsx"), "Runs seed / test / report scripts in TypeScript; linting"],
 ];
 
@@ -43,7 +44,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   body { font: 10pt/1.5 "IBM Plex Sans", "Segoe UI", sans-serif; color: #13222b; margin: 0; }
   h1, h2, h3 { font-family: "Archivo", "Arial Narrow", sans-serif; font-stretch: 86%; margin: 0; text-wrap: balance; }
   h2 { font-size: 19pt; margin: 0 0 8pt; padding-top: 2pt; }
-  h2 small { display: block; font: 600 8pt/1 "IBM Plex Mono", monospace; letter-spacing: .1em; color: #0a6f8c; margin-bottom: 6pt; }
+  h2 small { display: block; font: 600 8pt/1 "IBM Plex Mono", monospace; letter-spacing: .1em; color: #3a7266; margin-bottom: 6pt; }
   h3 { font-size: 12pt; margin: 12pt 0 4pt; }
   p { margin: 0 0 7pt; max-width: 170mm; }
   ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
@@ -53,10 +54,11 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   section { page-break-before: always; }
   .cover { height: 262mm; display: flex; flex-direction: column; justify-content: space-between; page-break-before: auto; }
   .brand { font: 800 30pt/1 "Archivo", sans-serif; font-stretch: 78%; letter-spacing: .04em; }
-  .brand span, .accent { color: #0a6f8c; }
+  .brand .crm { display:inline-block; font-size: 13pt; background:#3a7266; color:#fff; padding: 1.5mm 3mm; border-radius: 4px; letter-spacing:.08em; vertical-align: middle; }
+  .accent { color: #3a7266; }
   .cover h1 { font-size: 34pt; line-height: 1.05; margin-top: 30mm; max-width: 160mm; }
   .cover .lede { font-size: 12pt; color: #44555e; max-width: 150mm; margin-top: 8mm; }
-  .cover .meta { border-top: 2px solid #0a6f8c; padding-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; font-size: 9pt; }
+  .cover .meta { border-top: 2px solid #3a7266; padding-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; font-size: 9pt; }
   .cover .meta b { display: block; font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; color: #5d6e77; font-weight: 600; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
   .kpi { border: 1px solid #d3dcdb; border-radius: 6px; padding: 3mm; }
@@ -68,7 +70,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   td { border-bottom: 1px solid #d3dcdb; padding: 5pt 6pt; vertical-align: top; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
   .box { border: 1px solid #d3dcdb; border-radius: 6px; padding: 4mm; page-break-inside: avoid; }
-  .box.accent-b { border-top: 3px solid #0a6f8c; }
+  .box.accent-b { border-top: 3px solid #3a7266; }
   .flow { display: flex; flex-wrap: wrap; gap: 2mm; align-items: center; margin: 3mm 0 5mm; font-size: 8.5pt; }
   .flow span.s { border: 1px solid #d3dcdb; border-radius: 4px; padding: 2mm 2.5mm; background: #f4f7f6; }
   .flow span.a { color: #7e9098; }
@@ -81,16 +83,16 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
   .arch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 3mm 0 5mm; font-size: 8.6pt; }
   .arch div { border: 1px solid #d3dcdb; border-radius: 6px; padding: 3mm; }
-  .arch div b { display: block; color: #0a6f8c; margin-bottom: 1mm; }
+  .arch div b { display: block; color: #3a7266; margin-bottom: 1mm; }
   .pass { color: #2c7a4b; font-weight: 600; }
   .fail { color: #b83227; font-weight: 600; }
   code, pre { font-family: "IBM Plex Mono", monospace; font-size: 8.5pt; }
   pre { background: #f0f4f3; border-radius: 4px; padding: 3mm; white-space: pre-wrap; margin: 2mm 0 4mm; }
-  .tag { display: inline-block; font-size: 7.5pt; font-weight: 600; padding: 0 5pt; border-radius: 8pt; background: #dcedf2; color: #0a6f8c; }
+  .tag { display: inline-block; font-size: 7.5pt; font-weight: 600; padding: 0 5pt; border-radius: 8pt; background: #e1efeb; color: #3a7266; }
 </style></head><body>
 
 <div class="cover">
-  <div class="brand">SPACE<span>AIR</span> CRM</div>
+  <div class="brand"><img src="../public/brand/spaceair-logo.png" alt="SPACEAIR – Feel the Difference" style="height:22mm;vertical-align:middle"> <span class="crm">CRM</span></div>
   <div>
     <h1>A CRM that runs on process, not on the Founder</h1>
     <p class="lede">Solution report for the SPACEAIR CRM: business analysis, what was built, how the automations reduce owner dependency, the technology used, and screenshots of the working application.</p>
@@ -106,9 +108,9 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   <h2><small>01 · EXECUTIVE SUMMARY</small>What we built</h2>
   <p>SPACEAIR has grown from 10 people in 2007 to roughly 200 across five locations and four MEP disciplines. Today, enquiries, quotations, AMC renewals and service complaints depend heavily on individuals, and many decisions and follow-ups still route through the Founder. This CRM replaces that with one shared system, a <b>delegation-of-authority matrix</b>, and an <b>automation engine</b> that does the chasing.</p>
   <div class="kpis">
-    <div class="kpi"><b>13</b><span>modules, from enquiry to AMC renewal</span></div>
+    <div class="kpi"><b>16</b><span>modules, from enquiry and BOQ to AMC renewal</span></div>
     <div class="kpi"><b>${RULES.length}</b><span>automation rules, each can be paused or tuned</span></div>
-    <div class="kpi"><b>7</b><span>roles with branch-scoped access</span></div>
+    <div class="kpi"><b>9</b><span>roles with branch-scoped access</span></div>
     <div class="kpi"><b>${passed}/${e2e.length}</b><span>end-to-end workflow checks passing</span></div>
   </div>
   <h3>How it reduces owner dependency</h3>
@@ -117,6 +119,8 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
     <li><b>Work is assigned automatically.</b> New enquiries go to the right engineer, service calls go to the least-loaded technician, a won PO goes to the Projects handover, and renewals go to the account owner.</li>
     <li><b>Follow-ups are chased by the system, not by phone.</b> Response deadlines, overdue follow-ups, stale deals, pending approvals and SLA breaches escalate one level at a time: the person, then the branch head, and the Founder only as a last resort.</li>
     <li><b>Recurring revenue is protected.</b> AMC renewal quotations go out automatically 60 days before expiry, and PPM visits are planned and tracked.</li>
+    <li><b>Estimation stops depending on one person.</b> Consultant BOQs are imported straight from Excel and priced from a rate library that learns from every quotation sent. The priced BOQ goes back in the client's own format, formulas intact.</li>
+    <li><b>Projects run on a defined workflow.</b> Award → engineering approvals → procurement → execution → QA/QC & commissioning → handover, with each team alerted when it's their turn and an AMC proposed at handover.</li>
     <li><b>Visibility comes from exceptions.</b> The Founder gets one daily digest listing only what needs them, plus live dashboards and reports with no Excel MIS.</li>
   </ul>
   <h3>What was delivered</h3>
@@ -162,7 +166,9 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
     <tr><td>Founder / MD</td><td>All branches, exceptions only</td><td>Dashboard, owner-only approvals, daily exception digest, reports</td></tr>
     <tr><td>Branch head</td><td>Own branch</td><td>Pipeline, mid-level approvals, escalations, branch digest</td></tr>
     <tr><td>Sales engineer</td><td>Own enquiries &amp; deals</td><td>Auto-assigned enquiries, reminders, BOQ quotes, self-approval up to limit</td></tr>
-    <tr><td>Estimation engineer</td><td>Pipeline &amp; quotations</td><td>BOQ templates by division, revision history</td></tr>
+    <tr><td>Estimation engineer</td><td>Pipeline, quotations, rate library</td><td>BOQ Excel import, auto-pricing, review task per tender, export in client format</td></tr>
+    <tr><td>Projects / planning</td><td>Projects</td><td>Six-phase delivery checklist, approval-stall reminders, handover</td></tr>
+    <tr><td>Procurement</td><td>Projects in procurement</td><td>Alerted automatically when engineering approvals are complete</td></tr>
     <tr><td>Service manager</td><td>Tickets, AMC, visits</td><td>Auto-dispatch, SLA ladder, PPM planner, chargeable-call alerts</td></tr>
     <tr><td>Technician</td><td>Own jobs (mobile)</td><td>Job list ordered by SLA, PPM visits, one-tap resolve</td></tr>
     <tr><td>Accounts</td><td>All branches</td><td>Advance-invoice tasks on every PO, AMC values</td></tr>
@@ -178,9 +184,11 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
     <tr><td><b>Pipeline</b></td><td>Drag-and-drop kanban with MEP stages (Qualified → Site survey → BOQ &amp; design → Quotation sent → Negotiation → PO received / Lost). Lost deals require a reason.</td></tr>
     <tr><td><b>Opportunity</b></td><td>Stage tracker, value and weighted value, tonnage, next action and owner, quotations, tasks, contacts and full activity timeline.</td></tr>
     <tr><td><b>Clients</b></td><td>Client 360: contacts, opportunities, AMCs, service history, projects, lifetime value, and an "AMC upsell" flag.</td></tr>
+    <tr><td><b>Client BOQ import &amp; rate library</b></td><td>Upload the consultant's unpriced BOQ (.xlsx). Sections, floor-wise quantities, QRO lines, approved makes and header details (client, consultant, architect, doc ref) are read automatically. Lines are priced from the rate library or estimated from similar sizes. The priced file downloads in the client's own format.</td></tr>
     <tr><td><b>Quotations</b></td><td>BOQ line-item editor with live totals, discount and GST 18%. Revisions R0…Rn with history, approval routing preview, send to client, and a printable quotation.</td></tr>
     <tr><td><b>Approvals</b></td><td>Delegation matrix in action: pending approvals for the right person, decision history, and a "handled without Founder" metric.</td></tr>
-    <tr><td><b>Projects</b></td><td>Created automatically from won POs, with a sales → projects → accounts handover checklist, progress and tasks.</td></tr>
+    <tr><td><b>Projects</b></td><td>Created automatically from won POs, then run through six phases: client award, engineering &amp; approvals (submittals, material approvals, shop drawings), procurement, site execution, QA/QC &amp; commissioning, and handover.</td></tr>
+    <tr><td><b>Consultants &amp; references</b></td><td>Consultants and architects tracked as their own records and linked to every project they influence. Reference projects by sector for sales teams.</td></tr>
     <tr><td><b>AMC contracts</b></td><td>Register with expiry countdown, automatic renewal quotations, lapse detection, and a planned PPM visit schedule with technician assignment.</td></tr>
     <tr><td><b>Service tickets</b></td><td>P1/P2/P3 SLA clock, AMC coverage check, auto-dispatch, escalation ladder, resolution and client feedback.</td></tr>
     <tr><td><b>Tasks &amp; Inbox</b></td><td>Personal and team task lists (most auto-created) and a notification inbox routed by role and branch.</td></tr>
@@ -222,6 +230,44 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
 </section>
 
 <section>
+  <h2><small>05a · ESTIMATION</small>Building the BOQ quotation, without the spreadsheet marathon</h2>
+  <p>Estimation is the step the team finds hardest to put into software. A consultant sends an unpriced BOQ in Excel with hundreds of lines, floor-wise quantities, "QRO" rate-only items and an approved-makes list. Someone senior prices it line by line from memory and old files, then pastes the rates back into the consultant's format. The CRM turns this into a guided, repeatable flow:</p>
+  <div class="flow">
+    <span class="s">Upload consultant BOQ (.xlsx)</span><span class="a">→</span><span class="s">Read sections, floors, QRO, makes, header</span><span class="a">→</span><span class="s">Price from rate library</span><span class="a">→</span><span class="s">Estimate similar sizes</span><span class="a">→</span><span class="s">Estimator reviews flagged lines</span><span class="a">→</span><span class="s">Approval matrix</span><span class="a">→</span><span class="s">Export in client's own file</span><span class="a">→</span><span class="s">Rates learned for next time</span>
+  </div>
+  <div class="two">
+    <div class="box accent-b"><h3 style="margin-top:0">What is automatic</h3><ul>
+      <li>Client, consultant, architect, doc ref and revision are picked up from the BOQ header, and the opportunity and contacts are created.</li>
+      <li>Every line keeps its item number, section, floor quantities and QRO flag.</li>
+      <li>Exact matches are priced from the rate library, with supply and installation kept separate.</li>
+      <li>Missing sizes are estimated from the nearest sizes in the same section (e.g. a 6200 CFM fan from the 5250 and 8950 CFM rates) and tagged "estimated" for review.</li>
+      <li>One review task for the estimator, plus submission-deadline alerts.</li>
+      <li>Export writes rates and selected makes into the consultant's own workbook. Formulas, sheets and images stay as they were, and Excel recalculates on open.</li>
+    </ul></div>
+    <div class="box"><h3 style="margin-top:0">Why this reduces dependency</h3><ul>
+      <li>Pricing knowledge moves from one person's memory into a company rate library that grows with every quotation sent.</li>
+      <li>A junior estimator can price a 200-line BOQ by reviewing flagged lines instead of starting from zero.</li>
+      <li>Discounts still follow the delegation matrix, so control is kept without every quote going to the Founder.</li>
+      <li>Built for the standard consultant layout: summary sheet, item-wise BOQ with floor quantities and QRO lines, approved makes and datasheet annexures. Export keeps every sheet, image and formula.</li>
+    </ul></div>
+  </div>
+  <p class="muted">Rates shown in screenshots are sample rates. In production the library is seeded from SPACEAIR's own past priced BOQs.</p>
+</section>
+
+<section>
+  <h2><small>05b · POSITIONING</small>CRM, ERP, or both?</h2>
+  <p>This system is a <b>CRM with estimation, project-delivery and service operations</b>, not an ERP. An ERP (SAP Business One-based products, Tally, Zoho Books) is the system of record for accounting, GST invoicing, inventory, purchasing and payroll. This CRM covers what happens before and around those transactions: enquiries, consultant BOQs, pricing, approvals, project workflow, AMC and service. That is where SPACEAIR's owner-dependency sits.</p>
+  <table>
+    <tr><th style="width:26%">Need</th><th>Where it belongs</th></tr>
+    <tr><td>Enquiries, pipeline, follow-ups, client history</td><td>CRM (this system)</td></tr>
+    <tr><td>Consultant BOQ import, pricing, revisions, approval matrix</td><td>CRM (this system); typically the weakest area in ERPs</td></tr>
+    <tr><td>Project phases, submittal approvals, handover, AMC, SLA service</td><td>CRM (this system)</td></tr>
+    <tr><td>Accounting, GST invoices, stock, vendor POs, payroll</td><td>ERP, connected to the CRM so won orders and AMC invoices flow across</td></tr>
+  </table>
+  <p>Recommendation: keep or choose an ERP for finance and inventory, and integrate it with this CRM through its API rather than forcing sales and estimation workflows into the ERP.</p>
+</section>
+
+<section>
   <h2><small>06 · WALKTHROUGH</small>The application, screen by screen</h2>
   <p class="muted">All screenshots were captured automatically from the running application with Playwright. All client names, people and figures are sample data.</p>
   ${shot("00-login", "Sign-in by role", "Each role sees its own branch, queue and approvals. Production would use Microsoft 365 / Google SSO.")}
@@ -247,6 +293,20 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
 <section>
   ${shot("10-approvals", "Approvals under the delegation matrix", "Auto-approved, branch head and Founder decisions, with the share handled without the Founder.", true)}
   ${shot("26-approvals-branch-head", "The Bangalore branch head's view", "A 6% discount lands with the branch head, not the Founder.")}
+</section>
+<section>
+  ${shot("29-boq-import", "Import a client BOQ", "Upload the consultant's unpriced Excel exactly as received.")}
+  ${shot("31-rate-library", "Rate library", "The company price book, learned from every quotation sent.")}
+</section>
+<section>
+  ${shot("30-boq-autopriced", "Auto-priced BOQ, ready for review", "Sections, floor quantities, QRO lines and approved makes read from the file. Rates are tagged library or estimated, and lines needing a rate are highlighted. Supply and installation totals are shown separately.", true)}
+</section>
+<section>
+  ${shot("32-project-phases", "Project delivery workflow", "Six phases, each owned by a team. Completing a phase moves the project on and alerts the next team; handover creates an AMC opportunity.", true)}
+</section>
+<section>
+  ${shot("33-consultants", "Consultants & architects", "The people who specify makes and float tenders, with the pipeline they influence.")}
+  ${shot("34-references", "Reference projects", "Completed projects by sector, ready for any sales conversation.")}
 </section>
 <section>
   ${shot("11-clients", "Clients", "Pipeline, orders, AMC value and open tickets per client; clients without an AMC are flagged as an upsell.")}
@@ -301,7 +361,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
     <div><b>Presentation</b>React Server Components render pages on the server with data already loaded. Small client components handle the kanban, BOQ editor, charts and forms.</div>
     <div><b>Application</b>Server Actions for every mutation (validated with Zod). Each action emits a domain event, such as <code>enquiry.created</code> or <code>opportunity.won</code>, to the automation engine.</div>
     <div><b>Automation engine</b>A rule registry with event and scheduled handlers. All side effects (tasks, alerts, messages) go through one context with de-duplication keys and a run log.</div>
-    <div><b>Data</b>Drizzle ORM over libSQL/SQLite: 19 tables covering users, clients, contacts, enquiries, opportunities, activities, tasks, quotations, BOQ items, approvals, projects, AMCs, PPM visits, tickets, notifications, outbox, rules, runs and settings.</div>
+    <div><b>Data</b>Drizzle ORM over libSQL/SQLite: 21 tables, including a learned rate library and reference projects, covering users, clients, contacts, enquiries, opportunities, activities, tasks, quotations, BOQ items, approvals, projects, AMCs, PPM visits, tickets, notifications, outbox, rules, runs and settings.</div>
     <div><b>Security</b>Signed JWT session cookie (HTTP-only), role- and branch-scoped queries, owner-only settings, and an API key on the integration endpoint.</div>
     <div><b>Integrations</b>Public web form, REST enquiry API, and a WhatsApp/email outbox ready for the WhatsApp Business Cloud API and an email service.</div>
   </div>
@@ -327,6 +387,8 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   <ul>
     <li>WhatsApp and email messages are recorded in the outbox, not delivered; delivery needs the provider accounts listed above.</li>
     <li>Sign-in is a role picker for demonstration; SSO is a production task.</li>
+    <li>The rate library holds sample rates. It needs seeding from SPACEAIR's own priced BOQs before real use.</li>
+    <li>The BOQ reader handles the standard consultant layout (S.No / description / unit / floor quantities / total / supply rate / installation rate). Unusual layouts may need a column-mapping step.</li>
     <li>Sample data only. Client names come from SPACEAIR's public client list and do not represent real transactions.</li>
   </ul>
 </section>
@@ -345,6 +407,8 @@ npm start            # open http://localhost:3000</pre>
     <li>Open <code>/enquire</code> in a second tab, submit an enquiry, then open it in <b>Enquiries</b>: it is auto-assigned and the WhatsApp is logged.</li>
     <li><b>Pipeline</b>: drag a deal to <i>PO received</i>, then open <b>Projects</b> to see the handover checklist and tasks.</li>
     <li><b>Quotations</b> → Q-26-187: change a quantity and the discount, and watch the approval route change.</li>
+    <li><b>Import client BOQ</b>: upload <code>public/samples/Sample-Unpriced-BOQ-HVAC.xlsx</code> and see it priced in seconds; download the priced file in the same format.</li>
+    <li><b>Projects</b> → P-2603: tick the remaining approvals and watch it move to Procurement.</li>
     <li>Sign in as <b>Karthik (sales)</b>, draft a quote at 5% and submit it. Sign in as <b>Ramesh (branch head)</b> and approve it. The Founder is never involved.</li>
     <li><b>AMC contracts</b>: renewal quotes already sent, and a lapsed contract flagged.</li>
     <li><b>Service</b>: SLA ladder and chargeable calls. Sign in as <b>Manoj (technician)</b> on a phone-sized window.</li>
