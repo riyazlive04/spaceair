@@ -1,5 +1,6 @@
 export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.DISABLE_SCHEDULER === "1") return;
+  // Serverless (Vercel) has no long-lived process for node-cron; schedule runs externally there.
+  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.DISABLE_SCHEDULER === "1" || process.env.VERCEL) return;
   const g = globalThis as unknown as { __saScheduler?: boolean };
   if (g.__saScheduler) return;
   g.__saScheduler = true;

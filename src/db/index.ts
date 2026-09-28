@@ -13,6 +13,8 @@ let real: DB | undefined;
 function getDb(): DB {
   if (real) return real;
   const url = process.env.DATABASE_URL ?? "file:./data/spaceair.db";
+  if (process.env.VERCEL && url.startsWith("file:"))
+    throw new Error("DATABASE_URL is not set: a local SQLite file can't be used on Vercel. Set DATABASE_URL (libsql://…) and DATABASE_AUTH_TOKEN.");
   const client = g.__libsql ?? createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
   if (process.env.NODE_ENV !== "production") g.__libsql = client;
   real = drizzle(client, { schema });
