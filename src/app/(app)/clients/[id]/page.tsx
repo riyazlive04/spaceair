@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, schema as S } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { lookups } from "@/lib/data";
@@ -27,6 +27,12 @@ export default async function ClientDetail(props: PageProps<"/clients/[id]">) {
   const won = opps.filter((o) => o.stage === "won").reduce((s, o) => s + o.value, 0);
   const open = opps.filter((o) => OPEN_STAGES.includes(o.stage)).reduce((s, o) => s + o.value, 0);
   const amcV = amcs.filter((x) => x.status !== "lapsed").reduce((s, x) => s + x.annualValue, 0);
+  const projectPayments = projects.length
+    ? await db.select().from(S.payments).where(inArray(S.payments.projectId, projects.map((p) => p.id)))
+    : [];
+  const paidByProject = new Map<string, number>();
+  for (const pay of projectPayments) paidByProject.set(pay.projectId, (paidByProject.get(pay.projectId) ?? 0) + pay.amount);
+  const outstanding = projects.reduce((s, p) => s + Math.max(0, p.value - (paidByProject.get(p.id) ?? 0)), 0);
 
   return (
     <>
@@ -36,6 +42,7 @@ export default async function ClientDetail(props: PageProps<"/clients/[id]">) {
         <Kpi label="Open pipeline" value={money(open)} />
         <Kpi label="AMC value / yr" value={money(amcV)} note={amcV ? undefined : "No AMC: upsell opportunity"} tone={amcV ? undefined : "warn"} />
         <Kpi label="Service tickets" value={tickets.length} note={`${tickets.filter((t) => t.status !== "resolved").length} open`} />
+        <Kpi label="Total outstanding" value={money(outstanding)} note={outstanding ? "Balance due across projects" : undefined} tone={outstanding ? "warn" : undefined} />
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)_340px] gap-4 max-lg:grid-cols-1">
         <div className="flex min-w-0 flex-col gap-4">

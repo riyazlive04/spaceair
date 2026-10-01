@@ -23,6 +23,16 @@ export const fmtDateTime = (d: Date | null | undefined) =>
 export const HOUR = 36e5;
 export const DAY = 864e5;
 
+/** yyyy-mm-dd / hh:mm in the server's local time, for pre-filling <input type="date"/"time">. toISOString() would give UTC, which drifts a stored time by the local UTC offset every time the form is re-saved. */
+export function localDateInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+export function localTimeInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function ago(d: Date | null | undefined, now = new Date()): string {
   if (!d) return "—";
   const ms = now.getTime() - d.getTime();

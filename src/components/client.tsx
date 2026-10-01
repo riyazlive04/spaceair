@@ -1,8 +1,61 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type MouseEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/format";
+import { openNotification } from "@/lib/actions";
+
+/** A <tr> that navigates on click anywhere in the row, without hijacking clicks on links/buttons/inputs inside it. */
+export function RowLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+  const router = useRouter();
+  const onClick = (e: MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).closest("a, button, input, select, textarea")) return;
+    router.push(href);
+  };
+  return (
+    <tr className={cn("row-link cursor-pointer", className)} onClick={onClick}>
+      {children}
+    </tr>
+  );
+}
+
+/** Polls for a new balance-reminder reply and shows a dismissible popup with a button straight to it. */
+export function ReplyPopup() {
+  const [n, setN] = useState<{ id: string; title: string; body: string | null; link: string | null } | null>(null);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/notifications/latest-reply");
+        const data = await res.json();
+        if (!cancelled) setN(data.notification);
+      } catch {
+        // ignore transient fetch errors, next poll retries
+      }
+    };
+    poll();
+    const t = setInterval(poll, 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, []);
+  if (!n || n.id === dismissed) return null;
+  return (
+    <div role="alert" className="fixed bottom-5 right-5 z-50 w-[340px] rounded-lg border border-accent bg-surface p-4 shadow-xl">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[13px] font-semibold">{n.title}</div>
+        <button type="button" onClick={() => setDismissed(n.id)} aria-label="Dismiss" className="text-muted hover:text-ink">×</button>
+      </div>
+      {n.body && <p className="mt-1 text-[12.5px] text-muted">{n.body}</p>}
+      <form action={openNotification.bind(null, n.id, n.link ?? "/notifications")} className="mt-3">
+        <Submit className="btn-primary w-full">View reply</Submit>
+      </form>
+    </div>
+  );
+}
 
 /** Shows the one-shot message a server action left in the sa_flash cookie. */
 export function Flash() {
@@ -79,6 +132,15 @@ export function Reveal({ label, children, className }: { label: ReactNode; child
       )}
     </div>
   );
+}
+
+/** A checkbox that toggles every input[name=itemName] inside the same <form>. */
+export function SelectAllCheckbox({ itemName, className, label }: { itemName: string; className?: string; label: string }) {
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const form = e.currentTarget.form;
+    form?.querySelectorAll<HTMLInputElement>(`input[name="${itemName}"]`).forEach((el) => (el.checked = e.currentTarget.checked));
+  };
+  return <input type="checkbox" className={className} onChange={onChange} aria-label={label} />;
 }
 
 export function AutoSubmitSelect({ name, defaultValue, options, className, label }: { name: string; defaultValue: string; options: { value: string; label: string }[]; className?: string; label: string }) {

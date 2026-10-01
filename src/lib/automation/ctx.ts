@@ -1,6 +1,7 @@
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DEFAULT_SETTINGS, OPEN_STAGES, type AppSettings } from "@/lib/constants";
+import { sendMail, type MailAttachment } from "@/lib/mail";
 
 const { users, settings, notifications, tasks, outbox, activities, enquiries, opportunities, tickets } = schema;
 
@@ -111,6 +112,18 @@ export class Ctx {
       .onConflictDoNothing()
       .returning({ id: notifications.id });
     if (r.length) this.actions++;
+    if (r.length && o.severity === "crit") {
+      const u = await db.query.users.findFirst({ where: eq(users.id, userId) });
+      if (u?.email && u.role === "owner") {
+        await this.send({
+          channel: "email",
+          to: u.email,
+          subject: `[Critical] ${title}`,
+          body: o.body ?? title,
+          dedupe: o.dedupe ? `crit-email:${o.dedupe}` : undefined,
+        });
+      }
+    }
     return r.length > 0;
   }
 
@@ -145,29 +158,63 @@ export class Ctx {
   async send(m: {
     channel: "email" | "whatsapp" | "sms";
     to: string | null | undefined;
+    cc?: string | null;
+    bcc?: string | null;
     subject?: string;
     body: string;
     relatedType?: string;
     relatedId?: string;
     dedupe?: string;
   }) {
-    if (!m.to) return false;
+    const r = await this.sendThreaded(m);
+    return r.sent;
+  }
+
+  /** Like send(), but also returns Gmail's message/thread id so a caller can poll the thread for replies. */
+  async sendThreaded(m: {
+    channel: "email" | "whatsapp" | "sms";
+    to: string | null | undefined;
+    cc?: string | null;
+    bcc?: string | null;
+    subject?: string;
+    body: string;
+    relatedType?: string;
+    relatedId?: string;
+    dedupe?: string;
+    existingThreadId?: string | null;
+    accountId?: string | null;
+    attachments?: MailAttachment[];
+  }) {
+    if (!m.to) return { sent: false as const, messageId: null, threadId: null };
+    const status = m.channel === "email" ? "queued" : "sent";
     const r = await db
       .insert(outbox)
       .values({
         id: uid(),
         channel: m.channel,
         to: m.to,
+        cc: m.cc || null,
+        bcc: m.bcc || null,
         subject: m.subject,
         body: m.body,
+        status,
         relatedType: m.relatedType,
         relatedId: m.relatedId,
         dedupeKey: m.dedupe ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: outbox.id });
-    if (r.length) this.actions++;
-    return r.length > 0;
+    if (!r.length) return { sent: false as const, messageId: null, threadId: null };
+    this.actions++;
+    if (m.channel === "email") {
+      const result = await sendMail({ to: m.to, cc: m.cc || undefined, bcc: m.bcc || undefined, subject: m.subject, body: m.body, existingThreadId: m.existingThreadId, accountId: m.accountId, attachments: m.attachments });
+      await db
+        .update(outbox)
+        .set({ status: result.ok ? "sent" : "failed" })
+        .where(eq(outbox.id, r[0].id));
+      return { sent: true as const, messageId: result.ok ? result.messageId : null, threadId: result.ok ? result.threadId : null };
+    }
+    return { sent: true as const, messageId: null, threadId: null };
   }
 
   async activity(entityType: string, entityId: string, body: string) {

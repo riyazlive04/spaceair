@@ -6,8 +6,9 @@ import { requireUser } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { PROJECT_PHASES, phaseLabel, ROLE_LABELS } from "@/lib/constants";
 import { money, fmtDate, fmtShort, cn } from "@/lib/format";
-import { toggleChecklist, completeTask } from "@/lib/actions";
+import { completeTask, recordPayment } from "@/lib/actions";
 import { Card, PageHeader, Pill, Timeline } from "@/components/ui";
+import { Submit } from "@/components/client";
 
 export default async function ProjectDetail(props: PageProps<"/projects/[id]">) {
   await requireUser();
@@ -15,11 +16,14 @@ export default async function ProjectDetail(props: PageProps<"/projects/[id]">) 
   const p = await db.query.projects.findFirst({ where: eq(S.projects.id, id) });
   if (!p) notFound();
   const L = await lookups();
-  const [tasks, acts, opp] = await Promise.all([
+  const [tasks, acts, opp, payments] = await Promise.all([
     db.select().from(S.tasks).where(and(eq(S.tasks.entityType, "project"), eq(S.tasks.entityId, id))),
     db.select().from(S.activities).where(and(eq(S.activities.entityType, "project"), eq(S.activities.entityId, id))).orderBy(desc(S.activities.createdAt)),
     p.opportunityId ? db.query.opportunities.findFirst({ where: eq(S.opportunities.id, p.opportunityId) }) : undefined,
+    db.select().from(S.payments).where(eq(S.payments.projectId, id)).orderBy(desc(S.payments.paidAt)),
   ]);
+  const paid = payments.reduce((sum, x) => sum + x.amount, 0);
+  const balance = p.value - paid;
   const cur = PROJECT_PHASES.findIndex((x) => x.key === p.phase);
   const done = p.checklist.filter((c) => c.done).length;
 
@@ -50,25 +54,29 @@ export default async function ProjectDetail(props: PageProps<"/projects/[id]">) 
           <div className="h-2.5 rounded bg-surface-2"><div className="h-full rounded bg-accent" style={{ width: `${p.progress}%` }} /></div>
         </div>
       </Card>
-      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-4 max-lg:grid-cols-1">
-        <Card title="Delivery checklist" sub="Completing a phase moves the project on and alerts the next team automatically">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 max-md:grid-cols-1">
-            {PROJECT_PHASES.map((ph) => (
-              <div key={ph.key} className="flex flex-col gap-0.5">
-                <h3 className="label">{ph.label}</h3>
-                {p.checklist.map((c, i) =>
-                  c.phase === ph.key ? (
-                    <form key={i} action={toggleChecklist.bind(null, p.id, i)}>
-                      <button type="submit" className="flex w-full items-center gap-2.5 rounded-md px-1 py-1 text-left text-[13px] hover:bg-surface-2">
-                        <span className={cn("grid size-4 shrink-0 place-items-center rounded border text-[10px]", c.done ? "border-good bg-good text-white" : "border-line")}>{c.done ? "✓" : ""}</span>
-                        <span className={c.done ? "text-muted line-through" : ""}>{c.item}</span>
-                      </button>
-                    </form>
-                  ) : null,
-                )}
-              </div>
-            ))}
+      <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
+        <Card title="Billing" sub="Project value, payments received and outstanding balance">
+          <div className="grid grid-cols-3 gap-2 text-center text-[13px]">
+            <div><div className="text-muted text-[11px]">Value</div><div className="font-semibold">{money(p.value)}</div></div>
+            <div><div className="text-muted text-[11px]">Paid</div><div className="font-semibold text-good">{money(paid)}</div></div>
+            <div><div className="text-muted text-[11px]">Balance</div><div className={cn("font-semibold", balance > 0 && "text-crit")}>{money(balance)}</div></div>
           </div>
+          <form action={recordPayment.bind(null, p.id)} className="mt-3 flex items-end gap-2">
+            <label className="flex-1 text-xs text-muted">Amount received<input className="input mt-0.5" type="number" step="0.01" name="amount" required aria-label="Amount received" /></label>
+            <label className="flex-1 text-xs text-muted">Note<input className="input mt-0.5" type="text" name="note" placeholder="e.g. against supply" aria-label="Note" /></label>
+            <Submit className="btn-primary">Record</Submit>
+          </form>
+          {payments.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-2">
+              {payments.map((pay) => (
+                <li key={pay.id} className="flex items-center justify-between gap-3 rounded-md border border-good bg-good-soft px-3 py-2">
+                  <span className="text-[13px] text-ink-2">{fmtDate(pay.paidAt)}{pay.note ? <> · <span className="font-medium">{pay.note}</span></> : ""}</span>
+                  <span className="font-mono text-[15px] font-semibold text-good">{money(pay.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {balance > 0 && <Link href="/email-automation" className="link mt-3 block text-xs">Manage balance reminder recipients →</Link>}
         </Card>
         <div className="flex flex-col gap-4">
           <Card title="Tasks" sub="Created by automations as phases change">

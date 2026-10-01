@@ -6,7 +6,7 @@ import { navCounts } from "@/lib/data";
 import { logout, setBranch } from "@/lib/actions";
 import { BRANCHES, ROLE_LABELS } from "@/lib/constants";
 import { Nav } from "@/components/nav";
-import { Flash, AutoSubmitSelect } from "@/components/client";
+import { Flash, AutoSubmitSelect, ReplyPopup } from "@/components/client";
 import { Logo } from "@/components/logo";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -67,6 +67,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <main className="flex min-w-0 flex-col gap-5 px-6 pb-12 pt-5 max-md:px-4">{children}</main>
       </div>
       <Flash />
+      <ReplyPopup />
     </div>
   );
 }

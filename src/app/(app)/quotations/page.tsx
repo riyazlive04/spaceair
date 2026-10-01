@@ -5,6 +5,7 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { fmtDate, money, quoteTotals } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Tabs } from "@/components/ui";
+import { RowLink } from "@/components/client";
 
 export const metadata = { title: "Quotations" };
 const TONE = { draft: "neutral", pending_approval: "warn", approved: "info", sent: "info", accepted: "good", rejected: "crit", superseded: "neutral" } as const;
@@ -40,7 +41,7 @@ export default async function Quotations(props: PageProps<"/quotations">) {
           <thead><tr><th>Quotation</th><th>Client / project</th><th>Prepared by</th><th>Date</th><th className="num">Discount</th><th className="num">Net value</th><th>Status</th></tr></thead>
           <tbody>
             {list.map(({ q, o, t }) => (
-              <tr key={q.id} className="row-link">
+              <RowLink key={q.id} href={`/quotations/${q.id}`}>
                 <td><Link className="link font-mono text-xs" href={`/quotations/${q.id}`}>{q.code} R{q.revision}</Link>{q.source === "boq_import" && <div className="text-[10.5px] font-semibold uppercase text-accent">client BOQ</div>}</td>
                 <td><div className="font-medium">{L.acctName(o.accountId)}</div><div className="text-xs text-muted">{o.title}</div></td>
                 <td>{L.userName(q.createdBy ?? o.ownerId)}</td>
@@ -48,7 +49,7 @@ export default async function Quotations(props: PageProps<"/quotations">) {
                 <td className="num">{q.discountPct}%</td>
                 <td className="num font-mono text-xs">{money(t.net)}</td>
                 <td><Pill tone={TONE[q.status]}>{q.status.replace("_", " ")}</Pill>{q.kind === "amc_renewal" && <span className="ml-1.5 text-[10.5px] font-semibold uppercase text-accent">auto</span>}</td>
-              </tr>
+              </RowLink>
             ))}
           </tbody>
         </table>

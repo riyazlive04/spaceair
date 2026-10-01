@@ -4,6 +4,7 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { money, fmtDate, daysUntil } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Kpi, Tabs } from "@/components/ui";
+import { RowLink } from "@/components/client";
 import { amcBadge } from "@/lib/badges";
 
 export const metadata = { title: "AMC contracts" };
@@ -39,7 +40,7 @@ export default async function Amc(props: PageProps<"/amc">) {
               const b = amcBadge(a, now);
               const v = visits.filter((x) => x.amcId === a.id && x.scheduledFor >= a.startDate && x.scheduledFor <= a.endDate);
               return (
-                <tr key={a.id} className="row-link">
+                <RowLink key={a.id} href={`/amc/${a.id}`}>
                   <td><Link className="link font-mono text-xs" href={`/amc/${a.id}`}>{a.code}</Link></td>
                   <td><div className="font-medium">{L.acctName(a.accountId)}</div><div className="text-xs text-muted">{a.site}</div></td>
                   <td>{a.scope}</td>
@@ -48,7 +49,7 @@ export default async function Amc(props: PageProps<"/amc">) {
                   <td className="whitespace-nowrap">{fmtDate(a.endDate)}</td>
                   <td className="font-mono text-xs">{v.filter((x) => x.status === "done").length}/{v.length || a.visitsPerYear}{v.some((x) => x.status === "missed") && <span className="text-crit"> · missed</span>}</td>
                   <td><Pill tone={b.tone}>{b.label}</Pill></td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

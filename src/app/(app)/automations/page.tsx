@@ -24,7 +24,7 @@ export default async function Automations() {
     <>
       <PageHeader
         title="Automations"
-        sub="The rules that keep work moving without anyone chasing it. Each one runs on an event (e.g. a new enquiry) or on a schedule every 15 minutes. Every action is logged."
+        sub="The rules that keep work moving without anyone chasing it. Each one runs on an event (e.g. a new enquiry) or on a schedule every minute. Every action is logged."
         actions={<form action={runAutomationsNow}><Submit className="btn-primary" pendingText="Running…">Run scheduled rules now</Submit></form>}
       />
       <Tabs current="Rules" items={[{ href: "/automations", label: "Rules", count: rules.length }, { href: "/automations/messages", label: "Messages sent", count: msgs.length }]} />

@@ -5,6 +5,7 @@ import { lookups } from "@/lib/data";
 import { OPEN_STAGES } from "@/lib/constants";
 import { money } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Tabs } from "@/components/ui";
+import { RowLink } from "@/components/client";
 
 export const metadata = { title: "Clients" };
 
@@ -43,7 +44,7 @@ export default async function Clients(props: PageProps<"/clients">) {
               const av = amcs.filter((x) => x.accountId === a.id && x.status !== "lapsed").reduce((s, x) => s + x.annualValue, 0);
               const tk = tickets.filter((x) => x.accountId === a.id && x.status !== "resolved").length;
               return (
-                <tr key={a.id} className="row-link">
+                <RowLink key={a.id} href={`/clients/${a.id}`}>
                   <td><Link href={`/clients/${a.id}`} className="font-medium hover:underline">{a.name}</Link></td>
                   <td>{a.industry}</td>
                   <td>{a.city}{a.city !== a.branch && <span className="text-muted"> ({a.branch})</span>}</td>
@@ -53,7 +54,7 @@ export default async function Clients(props: PageProps<"/clients">) {
                   <td className="num font-mono text-xs">{wv ? money(wv) : "—"}</td>
                   <td className="num font-mono text-xs">{av ? money(av) : <span className="text-warn">No AMC</span>}</td>
                   <td className="num">{tk || "—"}</td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

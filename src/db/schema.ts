@@ -254,7 +254,131 @@ export const projects = sqliteTable("projects", {
   phase: text("phase", { enum: ["award", "engineering", "procurement", "execution", "commissioning", "handover", "closed"] }).notNull().default("award"),
   progress: integer("progress").notNull().default(0),
   checklist: text("checklist", { mode: "json" }).$type<ChecklistItem[]>().notNull(),
+  /** Balance payment reminder email, editable per project. Empty To/Subject/Body fall back to an auto-generated default. */
+  reminderTo: text("reminder_to"),
+  reminderCc: text("reminder_cc"),
+  reminderBcc: text("reminder_bcc"),
+  reminderSubject: text("reminder_subject"),
+  reminderBody: text("reminder_body"),
+  /** Which connected Gmail account sends this project's balance reminders. Empty = the first connected account. */
+  reminderAccountId: text("reminder_account_id"),
+  /** Set when a client reply promises payment by a date, or disputes the balance — scheduled reminders pause until this date passes (dispute = paused indefinitely, cleared manually). */
+  reminderPausedUntil: ts("reminder_paused_until"),
+  reminderPauseReason: text("reminder_pause_reason"),
   createdAt: created(),
+});
+
+/** A payment received against a project's order value. Balance = project.value - sum(payments.amount). */
+export const payments = sqliteTable("payments", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  amount: real("amount").notNull(),
+  paidAt: created(),
+  note: text("note"),
+});
+
+/** A named, dated slice of a project's order value (e.g. advance / against-supply / on-commissioning). Informational — the actual balance still comes from payments vs. project.value. */
+export const paymentMilestones = sqliteTable("payment_milestones", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  label: text("label").notNull(),
+  amount: real("amount").notNull(),
+  dueDate: ts("due_date"),
+  sort: integer("sort").notNull().default(0),
+  createdAt: created(),
+});
+
+/** A reusable balance-reminder subject/body template (with {value}/{balance} tokens), pickable per project. */
+export const reminderTemplates = sqliteTable("reminder_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  createdAt: created(),
+});
+
+/** A scheduled date to email a balance-payment reminder for a project. Fires once, if a balance is still due. */
+export const paymentReminders = sqliteTable("payment_reminders", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  sendAt: ts("send_at").notNull(),
+  sentAt: ts("sent_at"),
+  /** Gmail's own message/thread id for the sent reminder, so replies to it can be polled. */
+  gmailMessageId: text("gmail_message_id"),
+  gmailThreadId: text("gmail_thread_id"),
+  createdAt: created(),
+});
+
+/** An inbound message polled from a payment reminder's Gmail thread — i.e. the client's reply. */
+export const emailReplies = sqliteTable("email_replies", {
+  id: text("id").primaryKey(),
+  reminderId: text("reminder_id").notNull(),
+  gmailMessageId: text("gmail_message_id").notNull().unique(),
+  fromAddress: text("from_address").notNull(),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  /** Set by a person reviewing the reply: promises a payment date, disputes the balance, or is just a note. */
+  action: text("action", { enum: ["promised", "disputed", "noted"] }),
+  actionDate: ts("action_date"),
+  actionNote: text("action_note"),
+  receivedAt: created(),
+});
+
+/** Who changed a project's reminder email (subject/body/recipients) and when — audit trail. */
+export const reminderAudit = sqliteTable("reminder_audit", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  userId: text("user_id"),
+  summary: text("summary").notNull(),
+  createdAt: created(),
+});
+
+/** A one-off email sent to a custom list of recipients (not tied to a project's balance). Sent gradually by the scheduler to stay within Gmail's rate limits. */
+export const broadcasts = sqliteTable("broadcasts", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  /** Comma-separated addresses CC'd/BCC'd on every send of this broadcast, alongside each row's own To recipient. */
+  cc: text("cc"),
+  bcc: text("bcc"),
+  accountId: text("account_id"),
+  createdBy: text("created_by"),
+  /** Recipients aren't sent until this time — lets a broadcast be scheduled rather than going out immediately. Defaults to "now" (i.e. next scheduler tick). */
+  sendAfter: ts("send_after").notNull().$defaultFn(() => new Date()),
+  createdAt: created(),
+});
+
+export const broadcastRecipients = sqliteTable("broadcast_recipients", {
+  id: text("id").primaryKey(),
+  broadcastId: text("broadcast_id").notNull(),
+  email: text("email").notNull(),
+  status: text("status", { enum: ["queued", "sent", "failed"] }).notNull().default("queued"),
+  error: text("error"),
+  sentAt: ts("sent_at"),
+  /** Gmail's own message/thread id for the sent message to this recipient, so a reply to it can be polled. */
+  gmailMessageId: text("gmail_message_id"),
+  gmailThreadId: text("gmail_thread_id"),
+  /**
+   * Per-recipient overrides for a personalized import (one row per email, each with its own
+   * content/schedule) — null falls back to the parent broadcast's shared subject/body/cc/bcc/sendAfter.
+   */
+  name: text("name"),
+  subject: text("subject"),
+  body: text("body"),
+  cc: text("cc"),
+  bcc: text("bcc"),
+  sendAt: ts("send_at"),
+});
+
+/** An inbound message polled from a broadcast recipient's Gmail thread — i.e. that person's reply. */
+export const broadcastReplies = sqliteTable("broadcast_replies", {
+  id: text("id").primaryKey(),
+  recipientId: text("recipient_id").notNull(),
+  gmailMessageId: text("gmail_message_id").notNull().unique(),
+  fromAddress: text("from_address").notNull(),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  receivedAt: created(),
 });
 
 export const amcContracts = sqliteTable("amc_contracts", {
@@ -320,6 +444,8 @@ export const outbox = sqliteTable("outbox", {
   id: text("id").primaryKey(),
   channel: text("channel", { enum: ["email", "whatsapp", "sms"] }).notNull(),
   to: text("to").notNull(),
+  cc: text("cc"),
+  bcc: text("bcc"),
   subject: text("subject"),
   body: text("body").notNull(),
   status: text("status", { enum: ["queued", "sent", "failed"] }).notNull().default("sent"),
@@ -353,6 +479,14 @@ export const automationRuns = sqliteTable("automation_runs", {
 export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).notNull(),
+});
+
+/** The Gmail mailbox authorized (via OAuth2) to send this app's outbound email. At most one row. */
+export const googleMailAccount = sqliteTable("google_mail_account", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  refreshToken: text("refresh_token").notNull(),
+  connectedAt: created(),
 });
 
 export type User = typeof users.$inferSelect;

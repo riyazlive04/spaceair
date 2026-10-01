@@ -18,7 +18,7 @@ export default async function Dashboard() {
   const L = await lookups();
   const now = new Date();
 
-  const [opps, enqs, amcs, tickets, approvals, runs, notes, tasks] = await Promise.all([
+  const [opps, enqs, amcs, tickets, approvals, runs, notes, tasks, projects, payments, reminders] = await Promise.all([
     db.select().from(S.opportunities),
     db.select().from(S.enquiries),
     db.select().from(S.amcContracts),
@@ -27,6 +27,9 @@ export default async function Dashboard() {
     db.select().from(S.automationRuns).orderBy(desc(S.automationRuns.createdAt)).limit(8),
     db.select().from(S.notifications).where(and(eq(S.notifications.userId, user.id), eq(S.notifications.read, false))).orderBy(desc(S.notifications.createdAt)).limit(8),
     db.select().from(S.tasks).where(and(eq(S.tasks.assignedTo, user.id), eq(S.tasks.status, "open"))).orderBy(S.tasks.dueAt).limit(6),
+    db.select().from(S.projects),
+    db.select().from(S.payments),
+    db.select().from(S.paymentReminders),
   ]);
   const rules = await db.select().from(S.automationRules);
 
@@ -45,6 +48,14 @@ export default async function Dashboard() {
   const lapsed = A.filter((a) => a.status === "lapsed");
   const T = tickets.filter((t) => inScope(t.branch) && t.status !== "resolved" && (user.role !== "technician" || t.technicianId === user.id));
   const breached = T.filter((t) => slaState(t, now).tone === "crit");
+
+  const paidByProject = new Map<string, number>();
+  for (const pay of payments) paidByProject.set(pay.projectId, (paidByProject.get(pay.projectId) ?? 0) + pay.amount);
+  const P = projects.filter((p) => inScope(p.branch));
+  const totalOutstanding = P.reduce((s, p) => s + Math.max(0, p.value - (paidByProject.get(p.id) ?? 0)), 0);
+  const weekAgo = new Date(now.getTime() - 7 * 864e5);
+  const remindersThisWeek = reminders.filter((r) => r.createdAt >= weekAgo);
+  const remindersSentThisWeek = reminders.filter((r) => r.sentAt && r.sentAt >= weekAgo);
 
   const decided = approvals.filter((a) => a.status !== "pending");
   const noOwner = decided.filter((a) => a.approverRole !== "owner").length;
@@ -115,6 +126,15 @@ export default async function Dashboard() {
         <Kpi label="Open service tickets" value={T.length} note={`${breached.length} past SLA`} tone={breached.length ? "crit" : "good"} href="/service" />
         {(user.role === "owner" || user.role === "branch_head") && (
           <Kpi label="Decisions without Founder" value={`${ownerIndep}%`} note={`${autoActions} automated actions so far`} tone="good" href="/reports" />
+        )}
+        {(user.role === "owner" || user.role === "branch_head" || user.role === "accounts") && (
+          <Kpi
+            label="Balance outstanding"
+            value={money(totalOutstanding)}
+            note={`${remindersThisWeek.length} scheduled · ${remindersSentThisWeek.length} sent this week`}
+            tone={totalOutstanding ? "warn" : "good"}
+            href="/email-automation"
+          />
         )}
       </div>
 

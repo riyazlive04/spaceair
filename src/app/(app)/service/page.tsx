@@ -5,6 +5,7 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { ago, slaState } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Tabs, Kpi, Empty } from "@/components/ui";
+import { RowLink } from "@/components/client";
 
 export const metadata = { title: "Service tickets" };
 
@@ -43,7 +44,7 @@ export default async function Service(props: PageProps<"/service">) {
             {list.map((t) => {
               const s = slaState(t, now);
               return (
-                <tr key={t.id} className="row-link">
+                <RowLink key={t.id} href={`/service/${t.id}`}>
                   <td><Link className="link font-mono text-xs" href={`/service/${t.id}`}>{t.code}</Link></td>
                   <td><Pill tone={t.priority === "P1" ? "crit" : t.priority === "P2" ? "warn" : "neutral"}>{t.priority}</Pill></td>
                   <td><div className="font-medium">{L.acctName(t.accountId)}</div><div className="text-xs text-muted">{t.site}</div></td>
@@ -53,7 +54,7 @@ export default async function Service(props: PageProps<"/service">) {
                   <td className="whitespace-nowrap">{L.userName(t.technicianId)}</td>
                   <td>{t.chargeable ? <Pill tone="warn">Chargeable</Pill> : <span className="text-xs text-muted">AMC</span>}</td>
                   <td className="whitespace-nowrap">{t.status.replace("_", " ")}</td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

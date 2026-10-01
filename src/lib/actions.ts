@@ -12,6 +12,7 @@ import { uid, nextCode, getSettings } from "@/lib/automation/ctx";
 import { RULES } from "@/lib/automation/rules";
 import { quoteTotals, money, DAY } from "@/lib/format";
 import { stageLabel, type StageKey } from "@/lib/constants";
+import { tokenizeReminderTemplate } from "@/lib/reminder-template";
 import * as PC from "@/lib/product-codes/run";
 
 async function flash(msg: string) {
@@ -362,6 +363,267 @@ export async function updateProject(projectId: string, f: FormData) {
   const progress = Math.min(100, Math.max(0, Number(str(f, "progress")) || 0));
   await db.update(S.projects).set({ progress, status: progress >= 100 ? "completed" : "execution" }).where(eq(S.projects.id, projectId));
   await flash(progress >= 100 ? "Project completed" : "Progress updated");
+  refresh();
+}
+export async function recordPayment(projectId: string, f: FormData) {
+  const u = await requireUser();
+  const amount = Number(str(f, "amount"));
+  if (!amount || amount <= 0) return;
+  const note = str(f, "note") || null;
+  await db.insert(S.payments).values({ id: uid(), projectId, amount, note });
+  await log("project", projectId, `Payment received: ${money(amount)}${note ? ` (${note})` : ""}`, u.id);
+  await flash("Payment recorded");
+  refresh();
+}
+export async function saveReminderMessage(projectId: string, f: FormData) {
+  const u = await requireUser();
+  const before = await db.query.projects.findFirst({ where: eq(S.projects.id, projectId) });
+  if (!before) return;
+  const paidRows = await db.select().from(S.payments).where(eq(S.payments.projectId, projectId));
+  const paid = paidRows.reduce((s, x) => s + x.amount, 0);
+  const balance = before.value - paid;
+  const tokenize = (s: string) => tokenizeReminderTemplate(s, { value: before.value, balance });
+  const rawSubject = str(f, "reminderSubject");
+  const rawBody = str(f, "reminderBody");
+  const next = {
+    reminderTo: str(f, "reminderTo") || null,
+    reminderCc: str(f, "reminderCc") || null,
+    reminderBcc: str(f, "reminderBcc") || null,
+    reminderSubject: rawSubject ? tokenize(rawSubject) : null,
+    reminderBody: rawBody ? tokenize(rawBody) : null,
+    reminderAccountId: str(f, "reminderAccountId") || null,
+  };
+  await db.update(S.projects).set(next).where(eq(S.projects.id, projectId));
+  const changed = before
+    ? (Object.keys(next) as (keyof typeof next)[]).filter((k) => before[k] !== next[k])
+    : Object.keys(next);
+  if (changed.length) {
+    const labels: Record<string, string> = { reminderTo: "To", reminderCc: "CC", reminderBcc: "BCC", reminderSubject: "Subject", reminderBody: "Body", reminderAccountId: "Sending account" };
+    await db.insert(S.reminderAudit).values({ id: uid(), projectId, userId: u.id, summary: `Updated reminder email: ${changed.map((k) => labels[k] ?? k).join(", ")}` });
+  }
+  await flash("Reminder email saved");
+  refresh();
+}
+export async function applyReminderTemplate(projectId: string, templateId: string) {
+  const u = await requireUser();
+  const t = await db.query.reminderTemplates.findFirst({ where: eq(S.reminderTemplates.id, templateId) });
+  if (!t) return;
+  await db.update(S.projects).set({ reminderSubject: t.subject, reminderBody: t.body }).where(eq(S.projects.id, projectId));
+  await db.insert(S.reminderAudit).values({ id: uid(), projectId, userId: u.id, summary: `Applied template "${t.name}"` });
+  await flash(`Template "${t.name}" applied`);
+  refresh();
+}
+export async function saveReminderTemplate(f: FormData) {
+  await requireUser();
+  const name = str(f, "name");
+  const subject = str(f, "subject");
+  const body = str(f, "body");
+  if (!name || !subject || !body) return;
+  await db.insert(S.reminderTemplates).values({ id: uid(), name, subject, body });
+  await flash("Template saved");
+  refresh();
+}
+export async function deleteReminderTemplate(id: string) {
+  await requireUser();
+  await db.delete(S.reminderTemplates).where(eq(S.reminderTemplates.id, id));
+  refresh();
+}
+export async function scheduleReminder(projectId: string, f: FormData) {
+  const u = await requireUser();
+  const date = str(f, "date");
+  const time = str(f, "time") || "09:00";
+  if (!date) return;
+  const sendAt = new Date(`${date}T${time}`);
+  if (Number.isNaN(sendAt.getTime())) return;
+  await db.insert(S.paymentReminders).values({ id: uid(), projectId, sendAt });
+  await db.insert(S.reminderAudit).values({ id: uid(), projectId, userId: u.id, summary: `Scheduled a reminder for ${sendAt.toLocaleString("en-IN")}` });
+  await flash("Reminder scheduled");
+  refresh();
+}
+export async function bulkScheduleReminders(f: FormData) {
+  const u = await requireUser();
+  const date = str(f, "date");
+  const time = str(f, "time") || "09:00";
+  const projectIds = f.getAll("projectId").map(String);
+  if (!date || !projectIds.length) return;
+  const sendAt = new Date(`${date}T${time}`);
+  if (Number.isNaN(sendAt.getTime())) return;
+  await db.insert(S.paymentReminders).values(projectIds.map((projectId) => ({ id: uid(), projectId, sendAt })));
+  await db.insert(S.reminderAudit).values(projectIds.map((projectId) => ({ id: uid(), projectId, userId: u.id, summary: `Bulk-scheduled a reminder for ${sendAt.toLocaleString("en-IN")}` })));
+  await flash(`Scheduled reminders for ${projectIds.length} project${projectIds.length === 1 ? "" : "s"}`);
+  refresh();
+}
+export async function deleteReminder(id: string) {
+  const u = await requireUser();
+  const r = await db.query.paymentReminders.findFirst({ where: eq(S.paymentReminders.id, id) });
+  await db.delete(S.paymentReminders).where(eq(S.paymentReminders.id, id));
+  if (r) await db.insert(S.reminderAudit).values({ id: uid(), projectId: r.projectId, userId: u.id, summary: `Removed the reminder scheduled for ${r.sendAt.toLocaleString("en-IN")}` });
+  refresh();
+}
+export async function pauseReminders(projectId: string, f: FormData) {
+  const u = await requireUser();
+  const date = str(f, "date");
+  const reason = str(f, "reason") || null;
+  const pausedUntil = date ? new Date(`${date}T23:59:59`) : null;
+  await db.update(S.projects).set({ reminderPausedUntil: pausedUntil, reminderPauseReason: reason }).where(eq(S.projects.id, projectId));
+  await db.insert(S.reminderAudit).values({
+    id: uid(),
+    projectId,
+    userId: u.id,
+    summary: pausedUntil ? `Paused reminders until ${pausedUntil.toLocaleDateString("en-IN")}${reason ? ` (${reason})` : ""}` : "Resumed reminders",
+  });
+  await flash(pausedUntil ? "Reminders paused" : "Reminders resumed");
+  refresh();
+}
+export async function markReplyAction(replyId: string, f: FormData) {
+  const u = await requireUser();
+  const action = str(f, "action") as "promised" | "disputed" | "noted" | "";
+  if (!action) return;
+  const dateStr = str(f, "actionDate");
+  const note = str(f, "actionNote") || null;
+  const reply = await db.query.emailReplies.findFirst({ where: eq(S.emailReplies.id, replyId) });
+  if (!reply) return;
+  const reminder = await db.query.paymentReminders.findFirst({ where: eq(S.paymentReminders.id, reply.reminderId) });
+  await db.update(S.emailReplies).set({ action, actionDate: dateStr ? new Date(dateStr) : null, actionNote: note }).where(eq(S.emailReplies.id, replyId));
+  if (reminder && (action === "promised" || action === "disputed")) {
+    const pausedUntil = action === "promised" && dateStr ? new Date(`${dateStr}T23:59:59`) : null;
+    await db.update(S.projects).set({ reminderPausedUntil: pausedUntil, reminderPauseReason: action === "disputed" ? note ?? "Disputed by client" : note }).where(eq(S.projects.id, reminder.projectId));
+    await db.insert(S.reminderAudit).values({
+      id: uid(),
+      projectId: reminder.projectId,
+      userId: u.id,
+      summary: action === "promised" ? `Client promised payment by ${dateStr || "—"}; reminders paused until then` : `Marked balance disputed; reminders paused`,
+    });
+  }
+  await flash("Reply updated");
+  refresh();
+}
+/* ───────── broadcast email ───────── */
+export async function createBroadcast(f: FormData) {
+  const u = await requireUser();
+  const subject = str(f, "subject");
+  const body = str(f, "body");
+  const cc = str(f, "cc") || null;
+  const bcc = str(f, "bcc") || null;
+  const accountId = str(f, "accountId") || null;
+  const recipientsRaw = str(f, "recipients");
+  const emails = [...new Set(recipientsRaw.split(/[\n,;]/).map((s) => s.trim()).filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)))];
+  if (!subject || !body || !emails.length) return;
+  const dateStr = str(f, "date");
+  const timeStr = str(f, "time") || "09:00";
+  const sendAfter = dateStr ? new Date(`${dateStr}T${timeStr}`) : new Date();
+  const id = uid();
+  await db.insert(S.broadcasts).values({ id, subject, body, cc, bcc, accountId, createdBy: u.id, sendAfter: Number.isNaN(sendAfter.getTime()) ? new Date() : sendAfter });
+  await db.insert(S.broadcastRecipients).values(emails.map((email) => ({ id: uid(), broadcastId: id, email })));
+  await flash(`Queued ${emails.length} recipient${emails.length === 1 ? "" : "s"} — sending gradually in the background${dateStr ? ` from ${dateStr} ${timeStr}` : ""}`);
+  redirect("/email-automation");
+}
+/** Edits a broadcast's subject/body/CC/BCC/schedule/recipients — only affects recipients not yet sent. */
+export async function updateBroadcast(broadcastId: string, f: FormData) {
+  await requireUser();
+  const subject = str(f, "subject");
+  const body = str(f, "body");
+  const cc = str(f, "cc") || null;
+  const bcc = str(f, "bcc") || null;
+  const accountId = str(f, "accountId") || null;
+  if (!subject || !body) return;
+  const dateStr = str(f, "date");
+  const timeStr = str(f, "time") || "09:00";
+  const sendAfter = dateStr ? new Date(`${dateStr}T${timeStr}`) : new Date();
+  await db
+    .update(S.broadcasts)
+    .set({ subject, body, cc, bcc, accountId, sendAfter: Number.isNaN(sendAfter.getTime()) ? new Date() : sendAfter })
+    .where(eq(S.broadcasts.id, broadcastId));
+
+  const recipientsRaw = str(f, "recipients");
+  const emails = [...new Set(recipientsRaw.split(/[\n,;]/).map((s) => s.trim()).filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)))];
+  const existing = await db.select().from(S.broadcastRecipients).where(eq(S.broadcastRecipients.broadcastId, broadcastId));
+  const alreadySent = new Set(existing.filter((r) => r.status !== "queued").map((r) => r.email));
+  const stillQueued = existing.filter((r) => r.status === "queued");
+  const toKeep = new Set(emails.filter((e) => !alreadySent.has(e)));
+  for (const r of stillQueued) if (!toKeep.has(r.email)) await db.delete(S.broadcastRecipients).where(eq(S.broadcastRecipients.id, r.id));
+  const existingEmails = new Set(existing.map((r) => r.email));
+  const toAdd = [...toKeep].filter((e) => !existingEmails.has(e));
+  if (toAdd.length) await db.insert(S.broadcastRecipients).values(toAdd.map((email) => ({ id: uid(), broadcastId, email })));
+
+  await flash("Broadcast updated");
+  refresh();
+}
+/** Discards a parsed-but-not-yet-queued personalized import, so its preview can be dismissed and a different file uploaded. */
+export async function discardPersonalizedRows(key: string) {
+  await requireUser();
+  await db.delete(S.settings).where(eq(S.settings.key, `broadcast-rows:${key}`));
+  redirect("/email-automation");
+}
+/**
+ * Creates a personalized broadcast from the preview form — each row keeps its own
+ * subject/body/cc/bcc/send time (edited by the user in the preview, or left as parsed), so every
+ * recipient gets a distinct email instead of one shared message. The `broadcasts` row is just a
+ * grouping shell; its subject/body are unused once a recipient has its own, but still required by
+ * the schema, so they're filled from the first row.
+ */
+export async function createPersonalizedBroadcast(f: FormData) {
+  const u = await requireUser();
+  const key = str(f, "rows");
+  const accountId = str(f, "accountId") || null;
+  const count = Number(str(f, "count")) || 0;
+
+  const rows = Array.from({ length: count }, (_, i) => ({
+    name: str(f, `row_${i}_name`) || null,
+    email: str(f, `row_${i}_email`),
+    subject: str(f, `row_${i}_subject`),
+    body: str(f, `row_${i}_body`),
+    cc: str(f, `row_${i}_cc`) || null,
+    bcc: str(f, `row_${i}_bcc`) || null,
+    date: str(f, `row_${i}_date`) || null,
+    time: str(f, `row_${i}_time`) || null,
+  })).filter((r) => r.email && r.subject && r.body);
+  if (!rows.length) return;
+
+  const id = uid();
+  await db.insert(S.broadcasts).values({ id, subject: rows[0].subject, body: rows[0].body, accountId, createdBy: u.id, sendAfter: new Date() });
+  await db.insert(S.broadcastRecipients).values(
+    rows.map((r) => {
+      const sendAt = r.date ? new Date(`${r.date}T${r.time || "09:00"}`) : null;
+      return {
+        id: uid(),
+        broadcastId: id,
+        email: r.email,
+        name: r.name,
+        subject: r.subject,
+        body: r.body,
+        cc: r.cc,
+        bcc: r.bcc,
+        sendAt: sendAt && !Number.isNaN(sendAt.getTime()) ? sendAt : null,
+      };
+    })
+  );
+  if (key) await db.delete(S.settings).where(eq(S.settings.key, `broadcast-rows:${key}`));
+  await flash(`Queued ${rows.length} personalized email${rows.length === 1 ? "" : "s"}`);
+  redirect("/email-automation");
+}
+export async function deleteBroadcast(broadcastId: string) {
+  await requireUser();
+  await db.delete(S.broadcastRecipients).where(eq(S.broadcastRecipients.broadcastId, broadcastId));
+  await db.delete(S.broadcasts).where(eq(S.broadcasts.id, broadcastId));
+  await flash("Broadcast deleted");
+  refresh();
+}
+/* ───────── payment milestones ───────── */
+export async function addMilestone(projectId: string, f: FormData) {
+  await requireUser();
+  const label = str(f, "label");
+  const amount = Number(str(f, "amount"));
+  const dueDateStr = str(f, "dueDate");
+  if (!label || !amount || amount <= 0) return;
+  const existing = await db.select().from(S.paymentMilestones).where(eq(S.paymentMilestones.projectId, projectId));
+  await db.insert(S.paymentMilestones).values({ id: uid(), projectId, label, amount, dueDate: dueDateStr ? new Date(dueDateStr) : null, sort: existing.length });
+  await flash("Milestone added");
+  refresh();
+}
+export async function deleteMilestone(id: string) {
+  await requireUser();
+  await db.delete(S.paymentMilestones).where(eq(S.paymentMilestones.id, id));
   refresh();
 }
 

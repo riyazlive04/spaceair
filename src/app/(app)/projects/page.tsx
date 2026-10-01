@@ -5,6 +5,7 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { money, fmtDate } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Empty } from "@/components/ui";
+import { RowLink } from "@/components/client";
 import { phaseLabel } from "@/lib/constants";
 
 export const metadata = { title: "Projects" };
@@ -24,7 +25,7 @@ export default async function Projects() {
             {list.map((p) => {
               const done = p.checklist.filter((c) => c.done).length;
               return (
-                <tr key={p.id} className="row-link">
+                <RowLink key={p.id} href={`/projects/${p.id}`}>
                   <td><Link className="link font-mono text-xs" href={`/projects/${p.id}`}>{p.code}</Link><div className="text-[13px]">{p.name}</div></td>
                   <td>{L.acctName(p.accountId)}</td>
                   <td>{p.branch}</td>
@@ -33,7 +34,7 @@ export default async function Projects() {
                   <td className="whitespace-nowrap">{done}/{p.checklist.length} steps</td>
                   <td className="w-40"><div className="h-2 rounded bg-surface-2"><div className="h-full rounded bg-accent" style={{ width: `${p.progress}%` }} /></div><span className="text-xs text-muted">{p.progress}%</span></td>
                   <td><Pill tone={p.phase === "closed" ? "good" : p.phase === "award" ? "warn" : "info"}>{phaseLabel(p.phase)}</Pill><div className="text-[11px] text-muted">since {fmtDate(p.createdAt)}</div></td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

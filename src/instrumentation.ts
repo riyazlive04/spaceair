@@ -9,8 +9,8 @@ export async function register() {
   const { ensureRules, runScheduled } = await import("./lib/automation/engine");
   await ensureRules();
 
-  // Time-based automations: SLA escalations, AMC renewals, PPM planning, digests…
-  cron.schedule("*/15 * * * *", async () => {
+  // Time-based automations: SLA escalations, AMC renewals, PPM planning, digests, scheduled reminders/broadcasts…
+  cron.schedule("* * * * *", async () => {
     try {
       const n = await runScheduled();
       if (n) console.log(`[automation] scheduled run: ${n} actions`);
@@ -18,5 +18,5 @@ export async function register() {
       console.error("[automation] scheduled run failed", e);
     }
   });
-  console.log("[automation] scheduler started (every 15 minutes)");
+  console.log("[automation] scheduler started (every 1 minute)");
 }

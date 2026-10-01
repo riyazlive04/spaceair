@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Inbox, KanbanSquare, Building2, FileText, BadgeCheck, HardHat, CalendarClock, Wrench,
-  ListChecks, BarChart3, Workflow, Bell, Settings, Library, FileSpreadsheet, Barcode, type LucideIcon,
+  ListChecks, BarChart3, Workflow, Bell, Settings, Library, FileSpreadsheet, Barcode, Mail, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 
@@ -35,6 +35,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
   { label: "Management", items: [
     { href: "/reports", label: "Reports", icon: BarChart3, roles: ["owner", "branch_head", "accounts"] },
     { href: "/automations", label: "Automations", icon: Workflow, roles: ["owner", "branch_head", "service_manager"] },
+    { href: "/email-automation", label: "Email automation", icon: Mail, roles: ["owner"] },
     { href: "/settings", label: "Settings", icon: Settings, roles: ["owner"] },
   ] },
 ];

@@ -48,6 +48,8 @@ Sign in by choosing a role on the login page (Founder, branch head, sales, servi
 
 Environment (all optional locally): `DATABASE_URL` (default `file:./data/spaceair.db`; use a Turso URL in production), `DATABASE_AUTH_TOKEN`, `AUTH_SECRET`, `CRM_API_KEY` (default `spaceair-demo-key`), `DISABLE_SCHEDULER=1`.
 
+Email (optional; without these, emails are recorded in the outbox but not delivered): `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI` (default `http://localhost:3002/api/auth/google-mail/callback`) — a Google Cloud OAuth client (Gmail API, scope `gmail.send`). With these set, the Founder connects a sending mailbox once at **Settings → Email sending**; used for the Founder/branch-head daily digest, quotation and AMC renewal emails, and critical alerts.
+
 ## Integration API
 
 ```bash

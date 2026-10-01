@@ -5,6 +5,7 @@ import { requireUser, branchScope } from "@/lib/auth";
 import { lookups } from "@/lib/data";
 import { ago, money, HOUR } from "@/lib/format";
 import { PageHeader, Pill, TableWrap, Tabs, Div, Empty, type Tone } from "@/components/ui";
+import { RowLink } from "@/components/client";
 
 export const metadata = { title: "Enquiries" };
 const TONE: Record<string, Tone> = { new: "info", contacted: "neutral", qualified: "warn", converted: "good", disqualified: "neutral" };
@@ -44,7 +45,7 @@ export default async function Enquiries(props: PageProps<"/enquiries">) {
             {list.map((e) => {
               const late = e.status === "new" && now.getTime() - e.createdAt.getTime() > 4 * HOUR;
               return (
-                <tr key={e.id} className="row-link">
+                <RowLink key={e.id} href={`/enquiries/${e.id}`}>
                   <td><Link className="link font-mono text-xs" href={`/enquiries/${e.id}`}>{e.code}</Link></td>
                   <td className={late ? "whitespace-nowrap text-crit" : "whitespace-nowrap text-muted"}>{ago(e.createdAt, now)}</td>
                   <td className="whitespace-nowrap">{e.source}</td>
@@ -54,7 +55,7 @@ export default async function Enquiries(props: PageProps<"/enquiries">) {
                   <td className="num font-mono text-xs">{e.estValue ? money(e.estValue) : "—"}</td>
                   <td className="whitespace-nowrap">{L.userName(e.assignedTo)}</td>
                   <td><Pill tone={late ? "crit" : TONE[e.status]}>{late ? "No response" : e.status}</Pill></td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

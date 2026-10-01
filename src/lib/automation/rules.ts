@@ -3,6 +3,9 @@ import { db, schema } from "@/db";
 import { OPEN_STAGES, stageLabel, PROJECT_PHASES, phaseLabel, projectChecklist } from "@/lib/constants";
 import { priceLine, rateKey } from "@/lib/boq";
 import { DAY, HOUR, money, quoteTotals, fmtDate } from "@/lib/format";
+import { defaultReminderSubject, defaultReminderBody, fillReminderTemplate } from "@/lib/reminder-template";
+import { buildStatementPdf } from "@/lib/statement-pdf";
+import { sendMail } from "@/lib/mail";
 import {
   Ctx,
   uid,
@@ -141,7 +144,7 @@ export const RULES: Rule[] = [
     description:
       "If nobody responds within the deadline, the branch head is alerted. If it is still untouched after the re-assign window, it moves to the next available engineer automatically.",
     category: "Sales",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { escalateAfterHours: 4, reassignAfterHours: 24 },
     configLabels: { escalateAfterHours: "Alert branch head after (hours)", reassignAfterHours: "Re-assign after (hours)" },
     onSchedule: async (ctx, cfg) => {
@@ -186,7 +189,7 @@ export const RULES: Rule[] = [
     description:
       "Reminds the opportunity owner every day a next action is overdue, and alerts the branch head when it is overdue for longer than the limit.",
     category: "Sales",
-    trigger: "Every 15 minutes (once per day per deal)",
+    trigger: "Every minute (once per day per deal)",
     defaults: { escalateAfterDays: 3 },
     configLabels: { escalateAfterDays: "Alert branch head after (days overdue)" },
     onSchedule: async (ctx, cfg) => {
@@ -225,7 +228,7 @@ export const RULES: Rule[] = [
     name: "Stale deal nudge",
     description: "Open opportunities with no activity logged for too long get a re-engagement task for the owner.",
     category: "Sales",
-    trigger: "Every 15 minutes (once per week per deal)",
+    trigger: "Every minute (once per week per deal)",
     defaults: { idleDays: 14 },
     configLabels: { idleDays: "Idle days before nudge" },
     onSchedule: async (ctx, cfg) => {
@@ -317,7 +320,7 @@ export const RULES: Rule[] = [
     name: "Approval reminders",
     description: "Reminds approvers of pending approvals, and escalates a branch-head approval to the Founder only if it sits untouched past the escalation window.",
     category: "Approvals",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { remindAfterHours: 12, escalateAfterHours: 48 },
     configLabels: { remindAfterHours: "Remind approver after (hours)", escalateAfterHours: "Escalate after (hours)" },
     onSchedule: async (ctx, cfg) => {
@@ -343,7 +346,7 @@ export const RULES: Rule[] = [
     description:
       "When a quotation is sent: emails it to the client contact, moves the deal to 'Quotation sent', and schedules follow-ups at +3 and +7 days. Sends the client a WhatsApp reminder after 7 days of silence, and warns the owner before validity expires.",
     category: "Sales",
-    trigger: "When a quotation is sent, plus every 15 minutes",
+    trigger: "When a quotation is sent, plus every minute",
     defaults: { firstFollowupDays: 3, secondFollowupDays: 7 },
     configLabels: { firstFollowupDays: "First follow-up (days)", secondFollowupDays: "Second follow-up & client reminder (days)" },
     onEvent: {
@@ -510,7 +513,7 @@ export const RULES: Rule[] = [
     description:
       "At 75% of the SLA, alerts the technician and service manager. On breach, the branch head is alerted. Only a P1 breached for twice its SLA reaches the Founder.",
     category: "Service",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { warnPct: 75 },
     configLabels: { warnPct: "Early warning at (% of SLA used)" },
     onSchedule: async (ctx, cfg) => {
@@ -568,7 +571,7 @@ export const RULES: Rule[] = [
     description:
       "Within the notice window, creates a renewal opportunity and quotation (with the standard uplift), emails it to the client and gives the owner a follow-up task. Reminds at 30 days and alerts the branch head at 7 days. Marks the AMC lapsed on expiry.",
     category: "AMC",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { noticeDays: 60, upliftPct: 7 },
     configLabels: { noticeDays: "Start renewal (days before expiry)", upliftPct: "Standard renewal uplift (%)" },
     onSchedule: async (ctx, cfg) => {
@@ -617,7 +620,7 @@ export const RULES: Rule[] = [
     name: "PPM visit planner",
     description: "Plans every preventive-maintenance visit for the contract year as soon as an AMC starts, assigns a technician, reminds them the day before, and flags missed visits to the service manager.",
     category: "AMC",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { missedAfterDays: 2 },
     configLabels: { missedAfterDays: "Mark missed after (days)" },
     onSchedule: async (ctx, cfg) => {
@@ -646,6 +649,165 @@ export const RULES: Rule[] = [
           await ctx.notify(sm?.id, `Missed PPM visit: ${await acctName(a.accountId)}`, { body: `${a.code} visit due ${fmtDate(v.scheduledFor)}`, link: `/amc/${a.id}`, severity: "warn", dedupe: `ppm-miss-${v.id}` });
           ctx.note(`Missed visit flagged for ${a.code}`);
         }
+      }
+    },
+  },
+  {
+    key: "balance_payment_reminder",
+    name: "Balance payment reminders",
+    description:
+      "Sends a payment reminder email on each date scheduled for a project (Email automation page), as long as a balance is still outstanding. Escalates to Accounts once the balance has been outstanding past the configured number of days.",
+    category: "Projects",
+    trigger: "Every minute",
+    defaults: { escalateAfterDays: 90 },
+    configLabels: { escalateAfterDays: "Escalate to Accounts (days)" },
+    onSchedule: async (ctx, cfg) => {
+      const due = await db.select().from(S.paymentReminders).where(and(isNull(S.paymentReminders.sentAt), lt(S.paymentReminders.sendAt, ctx.now)));
+      for (const r of due) {
+        const p = await db.query.projects.findFirst({ where: eq(S.projects.id, r.projectId) });
+        if (!p) continue;
+        if (p.reminderPausedUntil && p.reminderPausedUntil > ctx.now) continue;
+        const paidRows = await db.select().from(S.payments).where(eq(S.payments.projectId, p.id));
+        const paid = paidRows.reduce((s, x) => s + x.amount, 0);
+        const balance = p.value - paid;
+        if (balance <= 0) {
+          await db.update(S.paymentReminders).set({ sentAt: ctx.now }).where(eq(S.paymentReminders.id, r.id));
+          continue;
+        }
+        const name = await acctName(p.accountId);
+        const c = await primaryContact(p.accountId);
+        const to = p.reminderTo || c?.email;
+        if (to) {
+          const bodyTemplate = p.reminderBody || defaultReminderBody(c?.name ?? "Sir/Madam", p.name, p.code);
+          const subjectTemplate = p.reminderSubject || defaultReminderSubject(p.code);
+          const body = fillReminderTemplate(bodyTemplate, { value: p.value, balance });
+          const subject = fillReminderTemplate(subjectTemplate, { value: p.value, balance });
+          const acct = await db.query.accounts.findFirst({ where: eq(S.accounts.id, p.accountId) });
+          const statementPdf = await buildStatementPdf({ code: p.code, name: p.name, clientName: acct?.name ?? "", value: p.value, payments: paidRows });
+          const result = await ctx.sendThreaded({
+            channel: "email",
+            to,
+            cc: p.reminderCc,
+            bcc: p.reminderBcc,
+            subject,
+            body,
+            relatedType: "project",
+            relatedId: p.id,
+            dedupe: `balance-rem-${r.id}`,
+            accountId: p.reminderAccountId,
+            attachments: [{ filename: `${p.code} statement of account.pdf`, contentType: "application/pdf", data: statementPdf }],
+          });
+          if (result.sent) {
+            ctx.note(`${p.code}: balance reminder sent to ${name}`);
+            if (result.messageId) await db.update(S.paymentReminders).set({ gmailMessageId: result.messageId, gmailThreadId: result.threadId }).where(eq(S.paymentReminders.id, r.id));
+          }
+        }
+        await db.update(S.paymentReminders).set({ sentAt: ctx.now }).where(eq(S.paymentReminders.id, r.id));
+        ctx.actions++;
+      }
+      if (cfg.escalateAfterDays > 0) {
+        const list = await db.select().from(S.projects).where(inArray(S.projects.status, ["handover", "execution"]));
+        for (const p of list) {
+          const paidRows = await db.select().from(S.payments).where(eq(S.payments.projectId, p.id));
+          const paid = paidRows.reduce((s, x) => s + x.amount, 0);
+          const balance = p.value - paid;
+          if (balance <= 0) continue;
+          const days = Math.floor((ctx.now.getTime() - p.createdAt.getTime()) / DAY);
+          if (days < cfg.escalateAfterDays) continue;
+          const name = await acctName(p.accountId);
+          const bh = await branchHead(p.branch);
+          const acc = (await usersBy("accounts"))[0];
+          for (const u of [bh, acc])
+            await ctx.notify(u?.id, `Balance overdue: ${name} (${p.code})`, {
+              body: `${money(balance)} outstanding on ${p.code}, ${days} days since start.`,
+              link: `/projects/${p.id}`,
+              severity: "crit",
+              dedupe: `balance-esc-${p.id}`,
+            });
+        }
+      }
+    },
+  },
+  {
+    key: "poll_email_replies",
+    name: "Check for balance reminder replies",
+    description: "Polls Gmail for replies to sent balance payment reminders, and alerts the project manager (or Founder) as soon as a client replies.",
+    category: "Projects",
+    trigger: "Every minute",
+    defaults: {},
+    onSchedule: async (ctx) => {
+      const { pollGmailForReplies } = await import("@/lib/gmail-poll");
+      const { newReplies } = await pollGmailForReplies();
+      for (const { projectId, replyId } of newReplies) {
+        const p = await db.query.projects.findFirst({ where: eq(S.projects.id, projectId) });
+        if (!p) continue;
+        const name = await acctName(p.accountId);
+        await ctx.notify(p.pmId ?? (await owner())?.id, `Reply on balance reminder: ${name} (${p.code})`, {
+          link: `/email-automation/${p.id}#reply-${replyId}`,
+          severity: "info",
+        });
+        ctx.actions++;
+        ctx.note(`${p.code}: new reply from ${name}`);
+      }
+    },
+  },
+  {
+    key: "send_broadcast",
+    name: "Send queued broadcast emails",
+    description: "Sends queued recipients of a one-off broadcast email (Email automation → Broadcast) a batch at a time, to stay within Gmail's sending limits.",
+    category: "Management",
+    trigger: "Every minute",
+    defaults: { batchSize: 20 },
+    configLabels: { batchSize: "Recipients per run" },
+    onSchedule: async (ctx, cfg) => {
+      const queued = await db.select().from(S.broadcastRecipients).where(eq(S.broadcastRecipients.status, "queued"));
+      if (!queued.length) return;
+      const broadcastIds = [...new Set(queued.map((r) => r.broadcastId))];
+      const broadcastsById = new Map((await Promise.all(broadcastIds.map((id) => db.query.broadcasts.findFirst({ where: eq(S.broadcasts.id, id) })))).filter((b): b is NonNullable<typeof b> => !!b).map((b) => [b.id, b]));
+      const due = queued.filter((r) => {
+        const b = broadcastsById.get(r.broadcastId);
+        return b && (r.sendAt ?? b.sendAfter) <= ctx.now;
+      }).slice(0, Math.max(1, cfg.batchSize));
+      if (!due.length) return;
+      for (const r of due) {
+        const b = broadcastsById.get(r.broadcastId)!;
+        const result = await sendMail({ to: r.email, cc: r.cc ?? b.cc ?? undefined, bcc: r.bcc ?? b.bcc ?? undefined, subject: r.subject ?? b.subject, body: r.body ?? b.body, accountId: b.accountId });
+        await db
+          .update(S.broadcastRecipients)
+          .set({
+            status: result.ok ? "sent" : "failed",
+            error: result.ok ? null : result.error,
+            sentAt: ctx.now,
+            gmailMessageId: result.ok ? result.messageId : null,
+            gmailThreadId: result.ok ? result.threadId : null,
+          })
+          .where(eq(S.broadcastRecipients.id, r.id));
+        ctx.actions++;
+      }
+      ctx.note(`Sent ${due.length} broadcast emails`);
+    },
+  },
+  {
+    key: "poll_broadcast_replies",
+    name: "Check for broadcast email replies",
+    description: "Polls Gmail for replies to sent broadcast emails, and alerts whoever created the broadcast as soon as a recipient replies.",
+    category: "Management",
+    trigger: "Every minute",
+    defaults: {},
+    onSchedule: async (ctx) => {
+      const { pollGmailForBroadcastReplies } = await import("@/lib/gmail-poll");
+      const { newReplies } = await pollGmailForBroadcastReplies();
+      for (const { recipientId, broadcastId, replyId } of newReplies) {
+        const b = await db.query.broadcasts.findFirst({ where: eq(S.broadcasts.id, broadcastId) });
+        if (!b) continue;
+        const recipient = await db.query.broadcastRecipients.findFirst({ where: eq(S.broadcastRecipients.id, recipientId) });
+        await ctx.notify(b.createdBy ?? (await owner())?.id, `Reply on broadcast: ${b.subject}`, {
+          body: recipient?.email,
+          link: `/email-automation#reply-${replyId}`,
+          severity: "info",
+        });
+        ctx.actions++;
+        ctx.note(`${b.subject}: new reply from ${recipient?.email ?? "recipient"}`);
       }
     },
   },
@@ -733,7 +895,7 @@ export const RULES: Rule[] = [
     name: "Tender / BOQ submission deadline",
     description: "Tracks the client's submission date on imported BOQs. Alerts the estimator and deal owner 48 h before, the branch head 24 h before, and flags missed submissions.",
     category: "Estimation",
-    trigger: "Every 15 minutes",
+    trigger: "Every minute",
     defaults: { warnHours: 48, escalateHours: 24 },
     configLabels: { warnHours: "Warn estimator (hours before)", escalateHours: "Alert branch head (hours before)" },
     onSchedule: async (ctx, cfg) => {
@@ -766,7 +928,7 @@ export const RULES: Rule[] = [
     description:
       "Moves each project through Client award → Engineering & approvals → Procurement → Site execution → QA/QC & commissioning → Handover as checklist items are completed, and hands work to the next team (e.g. Procurement). Reminds the PM when consultant approvals stall. On handover it creates an AMC opportunity, so the relationship continues into service.",
     category: "Projects",
-    trigger: "When a project checklist changes, plus every 15 minutes",
+    trigger: "When a project checklist changes, plus every minute",
     defaults: { approvalStallDays: 14, amcValuePct: 3 },
     configLabels: { approvalStallDays: "Remind PM if approvals open after (days)", amcValuePct: "AMC value estimate (% of project value)" },
     onEvent: {
