@@ -85,6 +85,109 @@ export function Flash() {
   );
 }
 
+/**
+ * Editable Name/Balance/Subject/Body fields for one personalized-import row. Any {balance} token in
+ * the parsed Subject/Body is substituted into plain text immediately on load (so what you see is
+ * exactly what will be sent — no lingering {balance} placeholder). If you change the Balance field
+ * afterward, a "Fill into subject/body" button re-applies it — it won't silently overwrite the text
+ * as you type, since you may have already edited it to something else.
+ */
+export function PersonalizedRowFields({
+  index,
+  name: initialName,
+  email,
+  balance: initialBalance,
+  subject: initialSubject,
+  body: initialBody,
+}: {
+  index: number;
+  name: string;
+  email: string;
+  balance: string;
+  subject: string;
+  body: string;
+}) {
+  const fill = (text: string, bal: string) => (bal ? text.replace(/\{balance\}/g, bal) : text);
+  const [balance, setBalance] = useState(initialBalance);
+  const [subject, setSubject] = useState(fill(initialSubject, initialBalance));
+  const [body, setBody] = useState(fill(initialBody, initialBalance));
+  const [lastFilled, setLastFilled] = useState(initialBalance);
+  const stale = balance !== lastFilled && !!balance;
+  const applyBalance = () => {
+    setSubject((s) => fill(s, balance));
+    setBody((b) => fill(b, balance));
+    setLastFilled(balance);
+  };
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2 max-md:grid-cols-1">
+        <label className="field text-[11.5px]">Name<input className="input" type="text" name={`row_${index}_name`} defaultValue={initialName} aria-label="Name" /></label>
+        <label className="field text-[11.5px]">Email<input className="input" type="email" name={`row_${index}_email`} defaultValue={email} required aria-label="Email" /></label>
+      </div>
+      <label className="field text-[11.5px]">
+        Balance
+        <div className="flex items-center gap-2">
+          <input className="input" type="text" name={`row_${index}_balance`} value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="e.g. ₹50,000" aria-label="Balance" />
+          {stale && (
+            <button type="button" onClick={applyBalance} className="btn-sm whitespace-nowrap">
+              Fill into subject/body
+            </button>
+          )}
+        </div>
+      </label>
+      <label className="field text-[11.5px]">
+        Subject
+        <input className="input" type="text" name={`row_${index}_subject`} value={subject} onChange={(e) => setSubject(e.target.value)} required aria-label="Subject" />
+      </label>
+      <label className="field text-[11.5px]">
+        Body
+        <textarea className="input" name={`row_${index}_body`} rows={5} value={body} onChange={(e) => setBody(e.target.value)} required aria-label="Body" />
+      </label>
+    </>
+  );
+}
+
+/**
+ * Checkboxes for picking which connected Gmail accounts should send a batch of personalized rows.
+ * Checking one or more accounts round-robin-assigns them across every row's own "Send from" dropdown
+ * (name={`row_${i}_accountId`}) in the same form — found by name, not by React state, since the rows
+ * are rendered server-side as plain <select>s. Each row's dropdown stays individually overridable
+ * afterward; this only sets the initial/bulk assignment.
+ */
+export function BatchAccountPicker({ accounts, rowCount }: { accounts: { id: string; email: string }[]; rowCount: number }) {
+  const [checked, setChecked] = useState<string[]>([accounts[0]?.id].filter((x): x is string => !!x));
+  const apply = (ids: string[]) => {
+    if (!ids.length) return;
+    for (let i = 0; i < rowCount; i++) {
+      const select = document.querySelector<HTMLSelectElement>(`select[name="row_${i}_accountId"]`);
+      if (select) select.value = ids[i % ids.length];
+    }
+  };
+  const toggle = (id: string) => {
+    setChecked((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      apply(next.length ? next : [accounts[0]?.id].filter((x): x is string => !!x));
+      return next;
+    });
+  };
+  return (
+    <div className="rounded-lg border border-line bg-surface-2 p-3">
+      <p className="label mb-1">Send this batch from</p>
+      <div className="flex flex-col gap-1.5">
+        {accounts.map((a) => (
+          <label key={a.id} className="flex items-center gap-2 text-[12.5px]">
+            <input type="checkbox" checked={checked.includes(a.id)} onChange={() => toggle(a.id)} className="size-4" />
+            <span className="font-mono">{a.email}</span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] text-muted">
+        Check one account to set every row to it, or several to split rows across them round-robin. Each row&apos;s own &quot;Send from&quot; below still stays editable afterward.
+      </p>
+    </div>
+  );
+}
+
 export function Submit({ children, className, pendingText, name, value }: { children: ReactNode; className?: string; pendingText?: string; name?: string; value?: string }) {
   const { pending, data } = useFormStatus();
   // with several submit buttons, only the one that was clicked shows the pending text

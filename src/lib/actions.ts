@@ -499,13 +499,18 @@ export async function markReplyAction(replyId: string, f: FormData) {
   refresh();
 }
 /* ───────── broadcast email ───────── */
+/**
+ * Creates a shared-content broadcast. When more than one sending account is checked, recipients
+ * are split round-robin across the checked accounts (each recipient still gets exactly one email),
+ * so a single large batch can be sent from several Gmail accounts at once instead of draining one.
+ */
 export async function createBroadcast(f: FormData) {
   const u = await requireUser();
   const subject = str(f, "subject");
   const body = str(f, "body");
   const cc = str(f, "cc") || null;
   const bcc = str(f, "bcc") || null;
-  const accountId = str(f, "accountId") || null;
+  const accountIds = f.getAll("accountId").map(String).filter(Boolean);
   const recipientsRaw = str(f, "recipients");
   const emails = [...new Set(recipientsRaw.split(/[\n,;]/).map((s) => s.trim()).filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)))];
   if (!subject || !body || !emails.length) return;
@@ -513,9 +518,14 @@ export async function createBroadcast(f: FormData) {
   const timeStr = str(f, "time") || "09:00";
   const sendAfter = dateStr ? new Date(`${dateStr}T${timeStr}`) : new Date();
   const id = uid();
-  await db.insert(S.broadcasts).values({ id, subject, body, cc, bcc, accountId, createdBy: u.id, sendAfter: Number.isNaN(sendAfter.getTime()) ? new Date() : sendAfter });
-  await db.insert(S.broadcastRecipients).values(emails.map((email) => ({ id: uid(), broadcastId: id, email })));
-  await flash(`Queued ${emails.length} recipient${emails.length === 1 ? "" : "s"} — sending gradually in the background${dateStr ? ` from ${dateStr} ${timeStr}` : ""}`);
+  await db.insert(S.broadcasts).values({ id, subject, body, cc, bcc, accountId: accountIds[0] ?? null, createdBy: u.id, sendAfter: Number.isNaN(sendAfter.getTime()) ? new Date() : sendAfter });
+  await db.insert(S.broadcastRecipients).values(
+    emails.map((email, i) => ({ id: uid(), broadcastId: id, email, accountId: accountIds.length > 1 ? accountIds[i % accountIds.length] : null }))
+  );
+  const sharedKey = str(f, "shared");
+  if (sharedKey) await db.delete(S.settings).where(eq(S.settings.key, `broadcast-shared:${sharedKey}`));
+  const splitNote = accountIds.length > 1 ? `, split across ${accountIds.length} accounts` : "";
+  await flash(`Queued ${emails.length} recipient${emails.length === 1 ? "" : "s"}${splitNote} — sending gradually in the background${dateStr ? ` from ${dateStr} ${timeStr}` : ""}`);
   redirect("/email-automation");
 }
 /** Edits a broadcast's subject/body/CC/BCC/schedule/recipients — only affects recipients not yet sent. */
@@ -555,33 +565,46 @@ export async function discardPersonalizedRows(key: string) {
   await db.delete(S.settings).where(eq(S.settings.key, `broadcast-rows:${key}`));
   redirect("/email-automation");
 }
+/** Discards a parsed-but-not-yet-queued shared-broadcast file upload, so a different file can be chosen. */
+export async function discardSharedBroadcastUpload(key: string) {
+  await requireUser();
+  await db.delete(S.settings).where(eq(S.settings.key, `broadcast-shared:${key}`));
+  redirect("/email-automation");
+}
 /**
  * Creates a personalized broadcast from the preview form — each row keeps its own
  * subject/body/cc/bcc/send time (edited by the user in the preview, or left as parsed), so every
- * recipient gets a distinct email instead of one shared message. The `broadcasts` row is just a
- * grouping shell; its subject/body are unused once a recipient has its own, but still required by
- * the schema, so they're filled from the first row.
+ * recipient gets a distinct email instead of one shared message. A row's Balance text (if any) is
+ * substituted into {balance} in that row's subject/body right here — plain text, not linked to any
+ * project or recorded anywhere. The `broadcasts` row is just a grouping shell; its subject/body are
+ * unused once a recipient has its own, but still required by the schema, so they're filled from the
+ * first row.
  */
 export async function createPersonalizedBroadcast(f: FormData) {
   const u = await requireUser();
   const key = str(f, "rows");
-  const accountId = str(f, "accountId") || null;
   const count = Number(str(f, "count")) || 0;
 
-  const rows = Array.from({ length: count }, (_, i) => ({
-    name: str(f, `row_${i}_name`) || null,
-    email: str(f, `row_${i}_email`),
-    subject: str(f, `row_${i}_subject`),
-    body: str(f, `row_${i}_body`),
-    cc: str(f, `row_${i}_cc`) || null,
-    bcc: str(f, `row_${i}_bcc`) || null,
-    date: str(f, `row_${i}_date`) || null,
-    time: str(f, `row_${i}_time`) || null,
-  })).filter((r) => r.email && r.subject && r.body);
+  const rows = Array.from({ length: count }, (_, i) => {
+    const balance = str(f, `row_${i}_balance`) || null;
+    const subject = str(f, `row_${i}_subject`);
+    const body = str(f, `row_${i}_body`);
+    return {
+      name: str(f, `row_${i}_name`) || null,
+      email: str(f, `row_${i}_email`),
+      subject: balance ? subject.replace(/\{balance\}/g, balance) : subject,
+      body: balance ? body.replace(/\{balance\}/g, balance) : body,
+      cc: str(f, `row_${i}_cc`) || null,
+      bcc: str(f, `row_${i}_bcc`) || null,
+      date: str(f, `row_${i}_date`) || null,
+      time: str(f, `row_${i}_time`) || null,
+      accountId: str(f, `row_${i}_accountId`) || null,
+    };
+  }).filter((r) => r.email && r.subject && r.body);
   if (!rows.length) return;
 
   const id = uid();
-  await db.insert(S.broadcasts).values({ id, subject: rows[0].subject, body: rows[0].body, accountId, createdBy: u.id, sendAfter: new Date() });
+  await db.insert(S.broadcasts).values({ id, subject: rows[0].subject, body: rows[0].body, accountId: rows[0].accountId, createdBy: u.id, sendAfter: new Date() });
   await db.insert(S.broadcastRecipients).values(
     rows.map((r) => {
       const sendAt = r.date ? new Date(`${r.date}T${r.time || "09:00"}`) : null;
@@ -594,10 +617,12 @@ export async function createPersonalizedBroadcast(f: FormData) {
         body: r.body,
         cc: r.cc,
         bcc: r.bcc,
+        accountId: r.accountId,
         sendAt: sendAt && !Number.isNaN(sendAt.getTime()) ? sendAt : null,
       };
     })
   );
+
   if (key) await db.delete(S.settings).where(eq(S.settings.key, `broadcast-rows:${key}`));
   await flash(`Queued ${rows.length} personalized email${rows.length === 1 ? "" : "s"}`);
   redirect("/email-automation");
@@ -607,6 +632,46 @@ export async function deleteBroadcast(broadcastId: string) {
   await db.delete(S.broadcastRecipients).where(eq(S.broadcastRecipients.broadcastId, broadcastId));
   await db.delete(S.broadcasts).where(eq(S.broadcasts.id, broadcastId));
   await flash("Broadcast deleted");
+  refresh();
+}
+/**
+ * Edits a single still-queued personalized recipient's email/subject/body/CC/BCC/send time — unlike
+ * updateBroadcast (which bulk-edits a shared-content broadcast's one subject/body for every queued
+ * recipient), a personalized row's content is its own, so it's edited one row at a time. No-ops once
+ * that recipient has already sent or failed.
+ */
+export async function updateBroadcastRecipient(recipientId: string, f: FormData) {
+  await requireUser();
+  const r = await db.query.broadcastRecipients.findFirst({ where: eq(S.broadcastRecipients.id, recipientId) });
+  if (!r || r.status !== "queued") return;
+  const email = str(f, "email");
+  const subject = str(f, "subject");
+  const body = str(f, "body");
+  if (!email || !subject || !body) return;
+  const dateStr = str(f, "date");
+  const timeStr = str(f, "time") || "09:00";
+  const sendAt = dateStr ? new Date(`${dateStr}T${timeStr}`) : null;
+  await db
+    .update(S.broadcastRecipients)
+    .set({
+      email,
+      subject,
+      body,
+      cc: str(f, "cc") || null,
+      bcc: str(f, "bcc") || null,
+      sendAt: sendAt && !Number.isNaN(sendAt.getTime()) ? sendAt : null,
+    })
+    .where(eq(S.broadcastRecipients.id, recipientId));
+  await flash("Recipient updated");
+  refresh();
+}
+/** Removes a single still-queued recipient from a broadcast (shared or personalized) without affecting the rest. */
+export async function deleteBroadcastRecipient(recipientId: string) {
+  await requireUser();
+  const r = await db.query.broadcastRecipients.findFirst({ where: eq(S.broadcastRecipients.id, recipientId) });
+  if (!r || r.status !== "queued") return;
+  await db.delete(S.broadcastRecipients).where(eq(S.broadcastRecipients.id, recipientId));
+  await flash("Recipient removed");
   refresh();
 }
 /* ───────── payment milestones ───────── */

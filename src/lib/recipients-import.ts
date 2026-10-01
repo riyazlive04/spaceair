@@ -108,13 +108,15 @@ export async function extractBroadcastData(file: File, sheetName?: string): Prom
   return { emails: emailsFromWorksheet(ws), subject, body, cc, bcc, date, time };
 }
 
-export type PersonalizedRow = { name: string | null; email: string; subject: string; body: string; cc: string | null; bcc: string | null; date: string | null; time: string | null };
+export type PersonalizedRow = { name: string | null; email: string; subject: string; body: string; cc: string | null; bcc: string | null; date: string | null; time: string | null; balance: string | null };
 
 /**
- * Reads one email per row — each row carries its own Name/Email/Subject/Body/CC/BCC/Date/Time,
- * unlike extractBroadcastData which applies one shared subject/body to every recipient. No project
- * code or CRM matching involved; every row becomes its own independent queued email. Header row is
- * matched loosely within the first 10 rows. Rows missing Email, Subject or Body are skipped.
+ * Reads one email per row — each row carries its own Name/Email/Subject/Body/CC/BCC/Date/Time, plus
+ * an optional Balance figure — unlike extractBroadcastData which applies one shared subject/body to
+ * every recipient. Balance is plain text inserted wherever a {balance} token appears in that row's
+ * Subject/Body; it is not matched against any project or recorded anywhere — just text substitution.
+ * Header row is matched loosely within the first 10 rows. Rows missing Email, Subject or Body are
+ * skipped.
  */
 export async function extractPersonalizedRows(file: File, sheetName?: string): Promise<PersonalizedRow[]> {
   const wb = new ExcelJS.Workbook();
@@ -128,7 +130,7 @@ export async function extractPersonalizedRows(file: File, sheetName?: string): P
   }
   if (!sheet) return [];
 
-  let cols: { name?: number; email?: number; subject?: number; body?: number; cc?: number; bcc?: number; date?: number; time?: number } = {};
+  let cols: { name?: number; email?: number; subject?: number; body?: number; cc?: number; bcc?: number; date?: number; time?: number; balance?: number } = {};
   let headerRow = -1;
   for (let r = 1; r <= Math.min(10, sheet.rowCount); r++) {
     const row = sheet.getRow(r);
@@ -144,6 +146,7 @@ export async function extractPersonalizedRows(file: File, sheetName?: string): P
       else if (t === "bcc") found.bcc = c;
       else if (t === "date" || t === "senddate") found.date = c;
       else if (t === "time" || t === "sendtime") found.time = c;
+      else if (t === "balance" || t === "balancetobepaid" || t === "balancedue" || t === "amountdue") found.balance = c;
     }
     if (found.email && (found.subject || found.body)) {
       headerRow = r;
@@ -171,6 +174,7 @@ export async function extractPersonalizedRows(file: File, sheetName?: string): P
       bcc: cols.bcc ? cellText(row.getCell(cols.bcc)).trim() || null : null,
       date: dateVal instanceof Date ? dateVal.toISOString().slice(0, 10) : dateVal ? String(dateVal).trim() || null : null,
       time: timeVal instanceof Date ? timeVal.toISOString().slice(11, 16) : timeVal ? String(timeVal).trim() || null : null,
+      balance: cols.balance ? cellText(row.getCell(cols.balance)).trim() || null : null,
     });
   }
   return rows;

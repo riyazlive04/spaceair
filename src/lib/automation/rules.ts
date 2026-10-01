@@ -771,7 +771,9 @@ export const RULES: Rule[] = [
       if (!due.length) return;
       for (const r of due) {
         const b = broadcastsById.get(r.broadcastId)!;
-        const result = await sendMail({ to: r.email, cc: r.cc ?? b.cc ?? undefined, bcc: r.bcc ?? b.bcc ?? undefined, subject: r.subject ?? b.subject, body: r.body ?? b.body, accountId: b.accountId });
+        const subject = r.subject ?? b.subject;
+        const body = r.body ?? b.body;
+        const result = await sendMail({ to: r.email, cc: r.cc ?? b.cc ?? undefined, bcc: r.bcc ?? b.bcc ?? undefined, subject, body, accountId: r.accountId ?? b.accountId });
         await db
           .update(S.broadcastRecipients)
           .set({

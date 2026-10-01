@@ -360,7 +360,9 @@ export const broadcastRecipients = sqliteTable("broadcast_recipients", {
   gmailThreadId: text("gmail_thread_id"),
   /**
    * Per-recipient overrides for a personalized import (one row per email, each with its own
-   * content/schedule) — null falls back to the parent broadcast's shared subject/body/cc/bcc/sendAfter.
+   * content/schedule/sending account) — null falls back to the parent broadcast's shared
+   * subject/body/cc/bcc/sendAfter/accountId. Lets one batch send from several connected Gmail
+   * accounts at once instead of only the broadcast's single account.
    */
   name: text("name"),
   subject: text("subject"),
@@ -368,6 +370,9 @@ export const broadcastRecipients = sqliteTable("broadcast_recipients", {
   cc: text("cc"),
   bcc: text("bcc"),
   sendAt: ts("send_at"),
+  accountId: text("account_id"),
+  /** Optional link to a project (matched from a "Project code" column on a personalized import), so a payment can be recorded against it after the email is sent. Null for rows with no match or no code. */
+  projectId: text("project_id"),
 });
 
 /** An inbound message polled from a broadcast recipient's Gmail thread — i.e. that person's reply. */
